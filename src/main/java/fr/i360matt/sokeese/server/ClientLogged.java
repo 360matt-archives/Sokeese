@@ -13,7 +13,6 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -55,30 +54,32 @@ public class ClientLogged implements Closeable {
                     while (this.server.isOpen() && this.isOpen()) {
                         // can now listen every packets
 
-                        final Object obj = this.receiver.readObject();
+                        try {
+                            final Object obj = this.receiver.readObject();
 
-                        if (obj instanceof Action)
-                            this.server.catcherManager.handleAction((Action) obj, this);
-                        else if (obj instanceof Message) {
-                            final Message message = (Message) obj;
-                            message.sender = this.session.name;
+                            if (obj instanceof Action)
+                                this.server.catcherManager.handleAction((Action) obj, this);
+                            else if (obj instanceof Message) {
+                                final Message message = (Message) obj;
+                                message.sender = this.session.name;
 
-                            if (message.recipient.equalsIgnoreCase("server")) { // to the server
-                                this.server.catcherManager.handleMessage(message, this);
-                            } else { // to be transmitted
-                                this.server.sendTo(message.recipient, message);
+                                if (message.recipient.equalsIgnoreCase("server")) { // to the server
+                                    this.server.catcherManager.handleMessage(message, this);
+                                } else { // to be transmitted
+                                    this.server.sendTo(message.recipient, message);
+                                }
+                            } else if (obj instanceof Reply) {
+                                final Reply reply = (Reply) obj;
+                                reply.sender = this.session.name;
+
+                                if (reply.recipient.equalsIgnoreCase("server")) { // to the server
+                                    this.server.catcherManager.handleReply(reply);
+                                } else { // to be transmitted
+                                    this.server.sendTo(reply.recipient, reply);
+                                }
                             }
-                        }
-                        else if (obj instanceof Reply) {
-                            final Reply reply = (Reply) obj;
-                            reply.sender = this.session.name;
+                        } catch (final ClassNotFoundException ignored) { }
 
-                            if (reply.recipient.equalsIgnoreCase("server")) { // to the server
-                                this.server.catcherManager.handleReply(reply);
-                            } else { // to be transmitted
-                                this.server.sendTo(reply.recipient, reply);
-                            }
-                        }
                     }
                 }
             } catch (final IOException | ClassNotFoundException ignored) { }

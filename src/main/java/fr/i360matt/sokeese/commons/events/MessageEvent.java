@@ -23,6 +23,7 @@ public class MessageEvent {
         public final void reply (final Reply reply) {
             if (this.message.idRequest != 0) {
                 reply.idRequest = this.message.idRequest;
+                reply.channel = this.message.channel;
                 this.client.sendObject(reply);
             }
         }
@@ -52,6 +53,7 @@ public class MessageEvent {
         public final void reply (final Reply reply) {
             if (this.message.idRequest != 0) {
                 reply.idRequest = this.message.idRequest;
+                reply.channel = this.message.channel;
                 this.instance.sendObject(reply);
             }
         }

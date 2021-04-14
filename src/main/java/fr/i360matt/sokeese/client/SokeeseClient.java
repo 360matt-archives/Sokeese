@@ -125,7 +125,7 @@ public class SokeeseClient implements Closeable {
     }
 
 
-    public final void sendObject (final Object obj) {
+    public final void send (final Object obj) {
         if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
             if (this.isAvailable) {
                 try {
@@ -143,7 +143,7 @@ public class SokeeseClient implements Closeable {
     }
 
 
-    public final void sendObject (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
+    public final void send (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
         if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
             if (this.isAvailable || this.mustBeSent == null) {
 
@@ -171,8 +171,8 @@ public class SokeeseClient implements Closeable {
         }
     }
 
-    public final void sendObject (Object obj, final BiConsumer<Reply, Boolean> consumer) {
-        this.sendObject(obj, 200, consumer);
+    public final void send (Object obj, final BiConsumer<Reply, Boolean> consumer) {
+        this.send(obj, 200, consumer);
     }
 
 

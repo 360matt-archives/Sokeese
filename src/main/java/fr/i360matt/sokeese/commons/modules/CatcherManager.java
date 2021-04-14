@@ -53,9 +53,8 @@ public class CatcherManager {
         public void handleMessage (final SokeeseClient client, final Message message) {
             final Set<Consumer<MessageEvent.CLIENT>> candidates = messageEvents.get(message.channel);
             if (candidates != null) {
-                candidates.forEach(event -> {
-                    event.accept(new MessageEvent.CLIENT(client, message));
-                });
+                for (final Consumer<MessageEvent.CLIENT> consumer : candidates)
+                    consumer.accept(new MessageEvent.CLIENT(client, message));
             }
         }
 
@@ -63,9 +62,8 @@ public class CatcherManager {
         public void handleAction (final SokeeseClient client, final Action action) {
             final Set<Consumer<ActionEvent.CLIENT>> candidates = actionEvents.get(action.name);
             if (candidates != null) {
-                candidates.forEach(event -> {
-                    event.accept(new ActionEvent.CLIENT(client, action));
-                });
+                for (final Consumer<ActionEvent.CLIENT> consumer : candidates)
+                    consumer.accept(new ActionEvent.CLIENT(client, action));
             }
         }
 
@@ -117,9 +115,8 @@ public class CatcherManager {
         public void handleMessage (final Message message, final ClientLogged client) {
             final Set<BiConsumer<MessageEvent.SERVER, ClientLogged>> candidates = messageEvents.get(message.channel);
             if (candidates != null) {
-                candidates.forEach(event -> {
-                    event.accept(new MessageEvent.SERVER(client, message), client);
-                });
+                for (final BiConsumer<MessageEvent.SERVER, ClientLogged> consumer : candidates)
+                    consumer.accept(new MessageEvent.SERVER(client, message), client);
             }
         }
 
@@ -127,9 +124,8 @@ public class CatcherManager {
         public void handleAction (final Action action, final ClientLogged client) {
             final Set<BiConsumer<ActionEvent.SERVER, ClientLogged>> candidates = actionEvents.get(action.name);
             if (candidates != null) {
-                candidates.forEach(event -> {
-                    event.accept(new ActionEvent.SERVER(client, action), client);
-                });
+                for (final BiConsumer<ActionEvent.SERVER, ClientLogged> consumer : candidates)
+                    consumer.accept(new ActionEvent.SERVER(client, action), client);
             }
         }
 

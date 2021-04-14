@@ -12,8 +12,10 @@ import fr.i360matt.sokeese.commons.requests.Reply;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -51,7 +53,8 @@ public class SokeeseClient implements Closeable {
             try {
                 while (this.isEnabled) {
                     this.isAvailable = false;
-                    this.mustBeSent = new HashSet<>();
+                    if (this.mustBeSent == null)
+                        this.mustBeSent = ConcurrentHashMap.newKeySet();
 
                     try (
                             final Socket socket = new Socket(host, port);
@@ -86,7 +89,7 @@ public class SokeeseClient implements Closeable {
                     if (this.isAvailable)
                         System.out.println(prefix + " Disconnected");
 
-                    Thread.sleep(1000);
+                    TimeUnit.SECONDS.sleep(1);
                 }
             } catch (final Exception ignored) { }
         });
@@ -142,7 +145,7 @@ public class SokeeseClient implements Closeable {
 
     public final void sendObject (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
         if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            if (this.isAvailable) {
+            if (this.isAvailable || this.mustBeSent == null) {
 
                 if (obj instanceof Message) {
                     final Message message = (Message) obj;

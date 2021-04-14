@@ -6,7 +6,7 @@ import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.server.ClientLogged;
 
 public class ActionEvent {
-    public static class CLIENT {
+    public static final class CLIENT {
         private final Action action;
         private final SokeeseClient client;
         public CLIENT (final SokeeseClient client, final Action action) {
@@ -20,16 +20,16 @@ public class ActionEvent {
 
 
         public final void send (final Message message) {
-            this.client.sendObject(message);
+            this.client.send(message);
         }
 
         public final void send (final Action action) {
-            this.client.sendObject(action);
+            this.client.send(action);
         }
     }
 
 
-    public static class SERVER {
+    public static final class SERVER {
         private final Action action;
         private final ClientLogged instance;
         public SERVER (final ClientLogged instance, final Action action) {

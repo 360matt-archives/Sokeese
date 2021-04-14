@@ -8,7 +8,7 @@ import fr.i360matt.sokeese.server.ClientLogged;
 
 public class MessageEvent {
 
-    public static class CLIENT {
+    public static final class CLIENT {
         private final Message message;
         private final SokeeseClient client;
         public CLIENT (final SokeeseClient client, final Message message) {
@@ -24,21 +24,21 @@ public class MessageEvent {
             if (this.message.idRequest != 0) {
                 reply.idRequest = this.message.idRequest;
                 reply.channel = this.message.channel;
-                this.client.sendObject(reply);
+                this.client.send(reply);
             }
         }
 
         public final void send (final Message message) {
-            this.client.sendObject(message);
+            this.client.send(message);
         }
 
         public final void send (final Action action) {
-            this.client.sendObject(action);
+            this.client.send(action);
         }
     }
 
 
-    public static class SERVER {
+    public static final class SERVER {
         private final Message message;
         private final ClientLogged instance;
         public SERVER (final ClientLogged instance, final Message message) {

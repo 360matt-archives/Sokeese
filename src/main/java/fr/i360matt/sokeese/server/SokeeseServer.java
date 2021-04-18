@@ -18,6 +18,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
+/**
+ * Allows to receive connections and communicate with SokeeseClient clients.
+ * The client must be of the same type and version as the server.
+ *
+ * @author 360matt
+ * @version 1.0.0
+ */
 public class SokeeseServer implements Closeable {
 
     private final LoginManager loginManager;
@@ -30,15 +37,19 @@ public class SokeeseServer implements Closeable {
 
     private ServerSocket server;
 
-    final Random random = new Random();
+    protected final Random random = new Random();
 
-
+    /**
+     * Allows you to start the server with a port number and its secret key.
+     *
+     * @param port The listening port of the server.
+     * @param privateKey The secret key from which the cryptography is based.
+     */
     public SokeeseServer (final int port, final String privateKey) {
         this.loginManager = new LoginManager(privateKey);
         this.catcherManager = new CatcherManager.SERVER();
 
-
-        service.execute(() -> {
+        this.service.execute(() -> {
             try (final ServerSocket server = new ServerSocket(port)) {
                 this.server = server;
 
@@ -48,14 +59,30 @@ public class SokeeseServer implements Closeable {
 
                     new ClientLogged(this, socket);
                 }
-            } catch (final Exception e) { }
+            } catch (final Exception ignored) { }
             finally {
-                service.shutdown();
+                this.catcherManager.close();
+                this.userManager.disconnectAll();
             }
         });
+        this.service.shutdown();
     }
 
-    public final void sendTo (final String recipient, final Object obj) throws IOException {
+    /**
+     * Sends a Message or Action type request to one or multiple clients
+     *
+     * @param recipient The name of the client who should receive the request.
+     *                  'SERVER' -> send the intended request to the server
+     *                  'ALL'    -> send the intended request to all clients except the server
+     * @param obj The request which must be of the Message or Action type.
+     *
+     * @see Message
+     * @see Action
+     * @see Reply
+     */
+    public final void send (final String recipient, final Object obj) throws IOException {
+        if (!isEnabled) return;
+
         if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
             // be sure we are sending a good packet
 
@@ -75,35 +102,75 @@ public class SokeeseServer implements Closeable {
         }
     }
 
-
+    /**
+     * Allows to register an event for the reception of a MESSAGE request on a certain channel
+     *
+     * @param channel The name of the channel that will be listened to.
+     * @param consumer The consumer which will be executed for each reception.
+     *
+     * @see MessageEvent.SERVER
+     */
     public final void onMessage (final String channel, final BiConsumer<MessageEvent.SERVER, ClientLogged> consumer) {
+        if (!isEnabled) return;
         this.catcherManager.addMessageEvent(channel, consumer);
     }
+
+    /**
+     * Allows to register an event for the reception of a ACTION request on a certain name
+     *
+     * @param name The name of the action that will be listened to.
+     * @param consumer The consumer which will be executed for each reception.
+     *
+     * @see ActionEvent.SERVER
+     */
     public final void onAction (final String name, final BiConsumer<ActionEvent.SERVER, ClientLogged> consumer) {
+        if (!isEnabled) return;
         this.catcherManager.addActionEvent(name, consumer);
     }
 
-
+    /**
+     * Allows to retrieve the login manager.
+     * @return The login manager of the instantiated server.
+     */
     public final LoginManager getLoginManager () {
         return this.loginManager;
     }
 
+    /**
+     * Allows to retrieve the user manager.
+     * @return The user manager of the instantiated server.
+     */
     public final UserManager getUserManager () {
         return this.userManager;
     }
 
+    /**
+     * Allows the server to be closed.
+     *
+     * The connection to all clients is closed.
+     * All services stop.
+     * All temporary data is deleted (users references, events)
+     */
     @Override public void close () {
         this.isEnabled = false;
         try {
             this.server.close();
-        } catch (final Exception ignored) {
-
-        }
+        } catch (final Exception ignored) { }
 
     }
+
+    /**
+     * Allow to retrieve the connection state of the server.
+     * @return the connection state of the client.
+     */
     public final boolean isClosed () {
         return !isEnabled;
     }
+
+    /**
+     * Allow to retrieve the connection state of the server.
+     * @return the connection state of the client.
+     */
     public final boolean isOpen () {
         return isEnabled;
     }

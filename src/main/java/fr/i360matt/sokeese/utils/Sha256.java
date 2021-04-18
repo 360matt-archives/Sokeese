@@ -4,8 +4,12 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
+/**
+ * Allows to generate a Sha256 of a character string.
+ * @version 1.0.0
+ */
 public final class Sha256 {
-    public static byte[] getSHA(final String input) {
+    public static byte[] getSHA (final String input) {
         try {
             final MessageDigest md = MessageDigest.getInstance("SHA-256");
             return md.digest(input.getBytes(StandardCharsets.UTF_8));

@@ -1,6 +1,7 @@
 package fr.i360matt.sokeese.utils;
 
 
+import java.io.Closeable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,8 +24,9 @@ import java.util.function.BiConsumer;
  * @param <K> Key Type
  * @param <V> Value Type
  */
-public class ExpirableCallback<K, V> extends ConcurrentHashMap<K, V> {
+public class ExpirableCallback<K, V> extends ConcurrentHashMap<K, V> implements Closeable {
 
+    private static final long serialVersionUID = 7931044222401042026L;
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
     private final Map<K, Long> timeMap = new ConcurrentHashMap<>();
@@ -39,11 +41,20 @@ public class ExpirableCallback<K, V> extends ConcurrentHashMap<K, V> {
         startTask();
     }
 
-    public final V put (final K key, final V value, int time) {
+    /**
+     * Insert an entry with the current timestamp.
+     * @param key L'identifiant de la requête de réponse.
+     * @param value The content of the event.
+     * @param time The deletion time.
+     */
+    public final void put (final K key, final V value, int time) {
         timeMap.put(key, System.currentTimeMillis() + time);
-        return super.put(key, value);
+        super.put(key, value);
     }
 
+    /**
+     * Start the service
+     */
     private void startTask () {
         executor.scheduleAtFixedRate(() -> {
             final long currentTime = System.currentTimeMillis();
@@ -60,12 +71,20 @@ public class ExpirableCallback<K, V> extends ConcurrentHashMap<K, V> {
         }, expiryInMillis / 2, expiryInMillis / 2, TimeUnit.MILLISECONDS);
     }
 
-    public final void quitMap () {
+    /**
+     * Allow to stop the service and empty all lists.
+     */
+    @Override
+    public final void close () {
         executor.shutdownNow();
         clear();
         timeMap.clear();
     }
 
+    /**
+     * Allow to find out if the service is active.
+     * @return The state of the service.
+     */
     public final boolean isAlive () {
         return !executor.isShutdown();
     }

@@ -31,6 +31,7 @@ public class SokeeseServer implements Closeable {
     protected final CatcherManager.SERVER catcherManager;
 
     private boolean isEnabled = true;
+    private boolean canSendToOther = false;
 
     protected final ExecutorService service = Executors.newSingleThreadExecutor();
     private final UserManager userManager = new UserManager();
@@ -87,6 +88,7 @@ public class SokeeseServer implements Closeable {
             // be sure we are sending a good packet
 
             if (!recipient.equalsIgnoreCase("server")) {
+                if (!this.canSendToOther) return;
                 if (recipient.equalsIgnoreCase("all")) { // send to every clients
                     for (final ClientLogged users : this.getUserManager().getAllUsers()) {
                         users.sender.writeObject(obj);
@@ -126,6 +128,22 @@ public class SokeeseServer implements Closeable {
     public final void onAction (final String name, final BiConsumer<ActionEvent.SERVER, ClientLogged> consumer) {
         if (!isEnabled) return;
         this.catcherManager.addActionEvent(name, consumer);
+    }
+
+    /**
+     * Allows to define whether clients can exchange requests with each other
+     * @param state The state of the parameter.
+     */
+    public final void setCanSendToOther (final boolean state) {
+        this.canSendToOther = state;
+    }
+
+    /**
+     * Retrieves the status of the option that allows customers to send.
+     * @return Option state.
+     */
+    public final boolean getCanSendToOther () {
+        return this.canSendToOther;
     }
 
     /**

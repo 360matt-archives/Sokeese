@@ -82,6 +82,7 @@ public class ClientLogged implements Closeable {
                                 if (message.recipient.equalsIgnoreCase("server")) { // to the server
                                     this.server.catcherManager.handleMessage(message, this);
                                 } else { // to be transmitted
+                                    if (!this.server.getCanSendToOther()) return;
                                     this.server.send(message.recipient, message);
                                 }
                             } else if (obj instanceof Reply) {
@@ -92,6 +93,7 @@ public class ClientLogged implements Closeable {
                                 if (reply.recipient.equalsIgnoreCase("server")) { // to the server
                                     this.server.catcherManager.handleReply(reply);
                                 } else { // to be transmitted
+                                    if (!this.server.getCanSendToOther()) return;
                                     this.server.send(reply.recipient, reply);
                                 }
                             }

@@ -33,7 +33,13 @@ public class Tests {
 
             array = null;
 
-            event.reply(reply);
+            /*event.reply(reply1 -> {
+                reply1.content = "truc";
+            });*/
+
+            event.reply("truc");
+
+
         });
 
 
@@ -48,10 +54,6 @@ public class Tests {
         session.token = "7e1f7d5986709da333cccc722347ca8b96c8668b947a7f9f8b4e1d7a53c33da";
 
         final SokeeseClient client = new SokeeseClient("91.167.152.22", 25565, session);
-
-        final SokeeseClient client2 = new SokeeseClient("91.167.152.22", 25565, session);
-
-
 
 
 

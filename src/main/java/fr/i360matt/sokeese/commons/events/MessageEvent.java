@@ -6,10 +6,12 @@ import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.commons.requests.Reply;
 import fr.i360matt.sokeese.server.ClientLogged;
 
+import java.util.function.Consumer;
+
 /**
  * Instances of this class represent an MESSAGE event
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @see Message
  */
 public class MessageEvent {
@@ -38,9 +40,26 @@ public class MessageEvent {
 
         /**
          * Allows to answer this query
-         * @param reply The request response.
+         * @param content The response.
          */
-        public final void reply (final Reply reply) {
+        public final void reply (final Object content) {
+            if (this.message.idRequest != 0) {
+                final Reply reply = new Reply();
+                reply.idRequest = this.message.idRequest;
+                reply.channel = this.message.channel;
+                reply.content = content;
+                this.client.send(reply);
+            }
+        }
+
+        /**
+         * Allows to answer this query
+         * @param function The request response function.
+         */
+        public final void reply (final Consumer<Reply> function) {
+            final Reply reply = new Reply();
+            function.accept(reply);
+
             if (this.message.idRequest != 0) {
                 reply.idRequest = this.message.idRequest;
                 reply.channel = this.message.channel;
@@ -90,9 +109,26 @@ public class MessageEvent {
 
         /**
          * Allows to answer this query
-         * @param reply The request response.
+         * @param content The response.
          */
-        public final void reply (final Reply reply) {
+        public final void reply (final Object content) {
+            if (this.message.idRequest != 0) {
+                final Reply reply = new Reply();
+                reply.idRequest = this.message.idRequest;
+                reply.channel = this.message.channel;
+                reply.content = content;
+                this.instance.send(reply);
+            }
+        }
+
+        /**
+         * Allows to answer this query
+         * @param function The request response function.
+         */
+        public final void reply (final Consumer<Reply> function) {
+            final Reply reply = new Reply();
+            function.accept(reply);
+
             if (this.message.idRequest != 0) {
                 reply.idRequest = this.message.idRequest;
                 reply.channel = this.message.channel;

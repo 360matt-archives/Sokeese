@@ -21,13 +21,12 @@ import java.util.function.BiConsumer;
  * Each session will have its own instance of this class.
  *
  * @author 360matt
- * @version 1.0.0
+ * @version 1.1.0
  *
  * @see SokeeseServer
  */
 public class ClientLogged implements Closeable {
-    protected final ExecutorService service = Executors.newSingleThreadExecutor();
-    private boolean isClientEnabled = true;
+    private boolean isClientEnabled = false;
 
     protected ObjectOutputStream sender;
     protected ObjectInputStream receiver;
@@ -49,7 +48,8 @@ public class ClientLogged implements Closeable {
         this.server = server;
         this.socket = client;
 
-        this.service.execute(() -> {
+        final ExecutorService service = Executors.newSingleThreadExecutor();
+        service.execute(() -> {
             try (
                     final ObjectInputStream receiver = new ObjectInputStream(client.getInputStream());
                     final ObjectOutputStream sender = new ObjectOutputStream(client.getOutputStream());
@@ -62,6 +62,8 @@ public class ClientLogged implements Closeable {
                 if (this.waitLogin()) { // if the login is successfull
                     client.setSoTimeout(1000 * 3600 * 6); // can now be connected for 6 hours
 
+                    this.isClientEnabled = true;
+
                     this.server.getUserManager().addUser(this);
                     // add this reference to users list
 
@@ -73,17 +75,20 @@ public class ClientLogged implements Closeable {
                             final Object obj = this.receiver.readObject(); // receive object over socket
 
                             if (obj instanceof Action)
-                                this.server.catcherManager.handleAction((Action) obj, this);
+                                this.server.getCatcherManager().handleAction((Action) obj, this);
                             else if (obj instanceof Message) {
                                 final Message message = (Message) obj;
                                 message.sender = this.session.name;
                                 // set this session name as sender name
 
                                 if (message.recipient.equalsIgnoreCase("server")) { // to the server
-                                    this.server.catcherManager.handleMessage(message, this);
+                                    this.server.getCatcherManager().handleMessage(message, this);
                                 } else { // to be transmitted
-                                    if (!this.server.getCanSendToOther()) return;
-                                    this.server.send(message.recipient, message);
+                                    final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
+
+                                    if ((!message.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
+                                        this.server.send(message.recipient, message);
+                                    }
                                 }
                             } else if (obj instanceof Reply) {
                                 final Reply reply = (Reply) obj;
@@ -91,10 +96,13 @@ public class ClientLogged implements Closeable {
                                 // set this session name as sender name
 
                                 if (reply.recipient.equalsIgnoreCase("server")) { // to the server
-                                    this.server.catcherManager.handleReply(reply);
+                                    this.server.getCatcherManager().handleReply(reply);
                                 } else { // to be transmitted
-                                    if (!this.server.getCanSendToOther()) return;
-                                    this.server.send(reply.recipient, reply);
+                                    final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
+
+                                    if ((!reply.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
+                                        this.server.send(reply.recipient, reply);
+                                    }
                                 }
                             }
                         } catch (final ClassNotFoundException ignored) { }
@@ -102,11 +110,13 @@ public class ClientLogged implements Closeable {
                 }
             } catch (final IOException | ClassNotFoundException ignored) { }
             finally {
-                this.isClientEnabled = false;
-                this.server.getUserManager().removeUser(this);
-                try {
-                    client.close();
-                } catch (IOException ignored) { }
+                if (this.isClientEnabled) {
+                    this.isClientEnabled = false;
+                    this.server.getUserManager().removeUser(this);
+                    try {
+                        client.close();
+                    } catch (IOException ignored) { }
+                }
             }
         });
     }
@@ -126,9 +136,7 @@ public class ClientLogged implements Closeable {
             try {
                 this.sender.writeObject(obj);
                 this.sender.flush();
-            } catch (final IOException e) {
-                e.printStackTrace();
-            }
+            } catch (final IOException ignored) { }
         }
     }
 
@@ -153,7 +161,7 @@ public class ClientLogged implements Closeable {
                 message.idRequest = this.server.random.nextLong();
                 obj = message;
 
-                this.server.catcherManager.addReplyEvent(message.idRequest, delay, consumer);
+                this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, consumer);
             }
 
             try {
@@ -198,11 +206,19 @@ public class ClientLogged implements Closeable {
 
             state = false;
             response.code = "MALFORMED_PACKET";
+        } else if (this.server.getOptions().getMaxClients() <= this.server.getUserManager().getCount()) {
+            // if the limit of simultaneous connected clients is reached
+
+            state = false;
+            response.code = "MAX_GLOBAL_CLIENT";
         } else {
             this.session = (Session) packet;
             if (!blacklisted.contains(this.session.name.toLowerCase())) {
                 state = this.server.getLoginManager().goodCredentials(this.session);
                 response.code = (state) ? "OK" : "INVALID";
+            } else if (this.server.getOptions().getMaxSameClient() < this.server.getUserManager().getUserCount(session.name)) {
+                state = false;
+                response.code = "MAX_SAME_CLIENT";
             } else {
                 state = false;
                 response.code = "FORBIDDEN";

@@ -12,10 +12,7 @@ import fr.i360matt.sokeese.commons.requests.Reply;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -24,14 +21,13 @@ import java.util.function.Consumer;
  * The server must be of the same type and version as the client.
  *
  * @author 360matt
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class SokeeseClient implements Closeable {
 
-    private final ExecutorService service = Executors.newSingleThreadExecutor();
     private final CatcherManager.CLIENT catcherManager;
+    private final ClientOptions options;
 
-    private Set<Queue> mustBeSent;
     private boolean isEnabled = true;
     private boolean isAvailable = false;
 
@@ -46,6 +42,7 @@ public class SokeeseClient implements Closeable {
     final String prefix;
     final Random random = new Random();
 
+
     /**
      * Allows to connect via the coordinates of the server as well as with an instance of Session.
      *
@@ -56,20 +53,38 @@ public class SokeeseClient implements Closeable {
      * @see Session
      */
     public SokeeseClient (final String host, final int port, final Session session) {
+        this(host, port, session, new ClientOptions());
+    }
+
+    /**
+     * Allows to connect via the coordinates of the server as well as with an instance of Session.
+     * You can set the options even before the connection starts.
+     *
+     * @param host Sokeese server host
+     * @param port Sokeese server port
+     * @param session Cryptographic session that the connection will use
+     * @param options Connection options
+     *
+     * @see Session
+     */
+    public SokeeseClient (final String host, final int port, final Session session, final ClientOptions options) {
         this.host = host;
         this.port = port;
         this.session = session;
+        this.options = options;
         this.catcherManager = new CatcherManager.CLIENT();
 
         this.prefix = "[SokeeseClient " + this.host + ":" + this.port + "]";
 
+        final CompletableFuture<Void> future = new CompletableFuture<>();
 
-        this.service.execute(() -> {
+        final ExecutorService service = Executors.newSingleThreadExecutor();
+        service.execute(() -> {
+            int loop = 0;
+
             try {
                 while (this.isEnabled) {
                     this.isAvailable = false;
-                    if (this.mustBeSent == null)
-                        this.mustBeSent = ConcurrentHashMap.newKeySet();
 
                     try (
                             final Socket socket = new Socket(host, port);
@@ -84,33 +99,43 @@ public class SokeeseClient implements Closeable {
 
                         if (this.waitLoginValidation()) { // if the login is successfull
                             this.isAvailable = true; // we can now send objects
-                            this.sendAllQueue();
 
-                            while (this.isEnabled) {
-                                final Object obj = this.receiver.readObject();
-                                if (obj instanceof Message)
-                                    this.catcherManager.handleMessage(this, (Message) obj);
-                                else if (obj instanceof Action)
-                                    this.catcherManager.handleAction(this, (Action) obj);
-                                else if (obj instanceof Reply)
-                                    this.catcherManager.handleReply((Reply) obj);
+                            future.complete(null); // and we can free the constructor
+
+                            while (this.isEnabled) { // until close() is called or readObject() have throw an error
+                                try {
+                                    final Object obj = this.receiver.readObject(); // produces an error if class not found or if socket closed
+                                    if (obj instanceof Message)
+                                        this.catcherManager.handleMessage(this, (Message) obj);
+                                    else if (obj instanceof Action)
+                                        this.catcherManager.handleAction(this, (Action) obj);
+                                    else if (obj instanceof Reply)
+                                        this.catcherManager.handleReply((Reply) obj);
+                                } catch (final ClassNotFoundException ignored) { }
                             }
                         }
-                    } catch (final IOException | ClassNotFoundException ignored) { }
+                    } catch (final IOException ignored) { } // if close() is called, an error will be raised because of readObject()
+                    finally {
+                        if (this.isAvailable)
+                            System.out.println(this.prefix + " Disconnected");
+                        this.isAvailable = false;
+                        TimeUnit.MILLISECONDS.sleep(this.options.retryDelay);
+                    }
 
-                    if (this.isAvailable)
-                        System.out.println(this.prefix + " Disconnected");
-
-                    TimeUnit.SECONDS.sleep(1);
+                    if (++loop == this.options.maxRetry) {
+                        this.isEnabled = false;
+                        break;
+                    }
                 }
             } catch (final Exception ignored) { }
             finally {
-                if (this.mustBeSent != null)
-                    this.mustBeSent.clear();
                 this.catcherManager.close();
+                future.complete(null); // and we can free the constructor
             }
         });
-        this.service.shutdown();
+        service.shutdown();
+
+        future.join();
     }
 
 
@@ -136,6 +161,12 @@ public class SokeeseClient implements Closeable {
             case "INVALID":
                 System.err.println(prefix + " Invalid credential for '" + this.session.name + "'");
                 return false;
+            case "MAX_GLOBAL_CLIENT":
+                System.err.println(prefix + " Server can't accept other connection just now (MAX_GLOBAL_CLIENT) for '" + this.session.name + "'");
+                return false;
+            case "MAX_SAME_CLIENT":
+                System.err.println(prefix + " Max clients connected with same name '" + this.session.name + "'");
+                return false;
             default:
                 System.err.println(prefix + " Internal error in login phase for '" + this.session.name + "'");
                 return false;
@@ -155,17 +186,11 @@ public class SokeeseClient implements Closeable {
     public final void send (final Object obj) {
         if (!this.isEnabled) return;
         if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            if (this.isAvailable) {
-                try {
-                    this.sender.writeObject(obj);
-                    this.sender.flush();
-                } catch (final IOException e) {
-                    // e.printStackTrace();
-                }
-            } else { // we are keep all objects, and send after, when the client will be logged
-                final Queue queue = new Queue();
-                queue.objToSend = obj;
-                this.mustBeSent.add(queue);
+            try {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            } catch (final IOException e) {
+                // e.printStackTrace();
             }
         }
     }
@@ -187,31 +212,23 @@ public class SokeeseClient implements Closeable {
      */
     public final void send (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
         if (!this.isEnabled) return;
-        if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            if (this.isAvailable || this.mustBeSent == null) {
 
-                if (obj instanceof Message) {
-                    final Message message = (Message) obj;
-                    message.idRequest = random.nextLong();
-                    obj = message;
+        try {
+            if (obj instanceof Message) {
+                final Message message = (Message) obj;
+                message.idRequest = random.nextLong();
 
-                    this.catcherManager.addReplyEvent(message.idRequest, delay, consumer);
-                }
+                this.catcherManager.addReplyEvent(message.idRequest, delay, consumer);
 
-                try {
-                    this.sender.writeObject(obj);
-                    this.sender.flush();
-                } catch (final IOException e) {
-                   // e.printStackTrace();
-                }
-            } else { // we are keep all objects, and send after, when the client will be logged
-                final Queue queue = new Queue();
-                queue.objToSend = obj;
-                queue.delay = delay;
-                queue.consumer = consumer;
-                this.mustBeSent.add(queue);
+                this.sender.writeObject(message);
+                this.sender.flush();
+
+            } else if (obj instanceof Action || obj instanceof Reply) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
             }
-        }
+        } catch (final IOException ignored) { }
+
     }
 
     /**
@@ -230,45 +247,9 @@ public class SokeeseClient implements Closeable {
      * @see Action
      * @see Reply
      */
-    public final void send (Object obj, final BiConsumer<Reply, Boolean> consumer) {
+    public final void send (final Object obj, final BiConsumer<Reply, Boolean> consumer) {
         this.send(obj, 200, consumer);
     }
-
-
-    /**
-     * Allows to send all the requests that had been put on hold.
-     */
-    private void sendAllQueue () {
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.execute(() -> {
-            final Iterator<Queue> it = this.mustBeSent.iterator();
-
-            try {
-                while (it.hasNext()) {
-                    if (this.isEnabled && !this.socket.isClosed()) {
-
-                        final Queue queue = it.next();
-                        Object obj = queue.objToSend;
-
-                        if (obj instanceof Message && queue.consumer != null) {
-                            final Message message = (Message) obj;
-                            message.idRequest = random.nextLong();
-                            obj = message;
-
-                            this.catcherManager.addReplyEvent(message.idRequest, queue.delay, queue.consumer);
-                        }
-
-                        this.sender.writeObject(obj);
-                        this.sender.flush();
-                        it.remove(); // remove only if no errors
-                    }
-                }
-            } catch (final IOException ignored) { }
-            this.mustBeSent = null;
-        });
-        executor.shutdown();
-    }
-
 
     /**
      * Allows to register an event for the reception of a MESSAGE request on a certain channel
@@ -294,6 +275,15 @@ public class SokeeseClient implements Closeable {
     public final void onAction (final String name, final Consumer<ActionEvent.CLIENT> consumer) {
         if (!this.isEnabled) return;
         this.catcherManager.addActionEvent(name, consumer);
+    }
+
+
+    /**
+     * Used to retrieve the option of the current session.
+     * @return The current session.
+     */
+    public final ClientOptions getOptions () {
+        return this.options;
     }
 
     /**

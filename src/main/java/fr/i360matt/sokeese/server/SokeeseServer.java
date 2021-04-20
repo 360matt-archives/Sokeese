@@ -28,12 +28,11 @@ import java.util.function.BiConsumer;
 public class SokeeseServer implements Closeable {
 
     private final LoginManager loginManager;
-    protected final CatcherManager.SERVER catcherManager;
+    private final CatcherManager.SERVER catcherManager;
+    private final ServerOptions options;
 
     private boolean isEnabled = true;
-    private boolean canSendToOther = false;
 
-    protected final ExecutorService service = Executors.newSingleThreadExecutor();
     private final UserManager userManager = new UserManager();
 
     private ServerSocket server;
@@ -47,26 +46,38 @@ public class SokeeseServer implements Closeable {
      * @param privateKey The secret key from which the cryptography is based.
      */
     public SokeeseServer (final int port, final String privateKey) {
+        this(port, privateKey, new ServerOptions());
+    }
+
+    /**
+     * Allows you to start the server with a port number and its secret key.
+     *
+     * @param port The listening port of the server.
+     * @param privateKey The secret key from which the cryptography is based.
+     * @param options Server options
+     */
+    public SokeeseServer (final int port, final String privateKey, final ServerOptions options) {
         this.loginManager = new LoginManager(privateKey);
         this.catcherManager = new CatcherManager.SERVER();
+        this.options = options;
 
-        this.service.execute(() -> {
+        final ExecutorService service = Executors.newSingleThreadExecutor();
+        service.execute(() -> {
             try (final ServerSocket server = new ServerSocket(port)) {
                 this.server = server;
 
                 while (this.isEnabled && !server.isClosed()) {
                     final Socket socket = server.accept();
                     socket.setSoTimeout(1000); // timeout 1 seconds while login
-
                     new ClientLogged(this, socket);
                 }
             } catch (final Exception ignored) { }
             finally {
                 this.catcherManager.close();
-                this.userManager.disconnectAll();
+                this.userManager.close();
             }
         });
-        this.service.shutdown();
+        service.shutdown();
     }
 
     /**
@@ -88,13 +99,15 @@ public class SokeeseServer implements Closeable {
             // be sure we are sending a good packet
 
             if (!recipient.equalsIgnoreCase("server")) {
-                if (!this.canSendToOther) return;
-                if (recipient.equalsIgnoreCase("all")) { // send to every clients
+
+                final ServerOptions.Level level = this.getOptions().getLevelMessages();
+
+                if (recipient.equalsIgnoreCase("all") && level.getLevel() == 3) { // send to every clients
                     for (final ClientLogged users : this.getUserManager().getAllUsers()) {
                         users.sender.writeObject(obj);
                         users.sender.flush();
                     }
-                } else { // send to unique client (or multiple terminals with the same name)
+                } else if (level.getLevel() == 1) { // send to unique client (or multiple terminals with the same name)
                     for (final ClientLogged users : this.getUserManager().getUser(recipient)) {
                         users.sender.writeObject(obj);
                         users.sender.flush();
@@ -130,21 +143,6 @@ public class SokeeseServer implements Closeable {
         this.catcherManager.addActionEvent(name, consumer);
     }
 
-    /**
-     * Allows to define whether clients can exchange requests with each other
-     * @param state The state of the parameter.
-     */
-    public final void setCanSendToOther (final boolean state) {
-        this.canSendToOther = state;
-    }
-
-    /**
-     * Retrieves the status of the option that allows customers to send.
-     * @return Option state.
-     */
-    public final boolean getCanSendToOther () {
-        return this.canSendToOther;
-    }
 
     /**
      * Allows to retrieve the login manager.
@@ -160,6 +158,22 @@ public class SokeeseServer implements Closeable {
      */
     public final UserManager getUserManager () {
         return this.userManager;
+    }
+
+    /**
+     * Allows to retrieve the event-catcher manager.
+     * @return The event-catcher manager of the instantiated server.
+     */
+    protected final CatcherManager.SERVER getCatcherManager () {
+        return this.catcherManager;
+    }
+
+    /**
+     * Used to retrieve the option of the current session.
+     * @return The current session.
+     */
+    public final ServerOptions getOptions () {
+        return this.options;
     }
 
     /**

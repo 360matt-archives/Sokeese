@@ -2,31 +2,45 @@ import fr.i360matt.sokeese.client.SokeeseClient;
 import fr.i360matt.sokeese.commons.Session;
 import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.commons.requests.Reply;
+import fr.i360matt.sokeese.server.ServerOptions;
 import fr.i360matt.sokeese.server.SokeeseServer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 
 public class Tests {
 
-    public static void main (final String[] args) throws InterruptedException {
+    public static void main (final String[] args) {
 
-        final SokeeseServer server = new SokeeseServer(25565, "key");
+        final ServerOptions serverOptions = new ServerOptions();
+        serverOptions.setMaxClients(1);
 
+        final SokeeseServer server = new SokeeseServer(25565, "key", serverOptions);
 
-        server.onMessage("i", (event, client) -> {
+        final Random random = new Random();
+
+        server.onMessage("none", (event, client) -> {
+
+            byte[] array = new byte[1024 * 1024 * 8];
+            random.nextBytes(array);
 
             final Reply reply = new Reply();
-            reply.content = 0;
+            reply.content = new String(array, StandardCharsets.UTF_8);
+
+            array = null;
 
             event.reply(reply);
         });
 
 
-        Thread.sleep(1000);
+
+
+
+
 
         final Session session = new Session();
         session.name = "cetus";
@@ -35,33 +49,31 @@ public class Tests {
 
         final SokeeseClient client = new SokeeseClient("91.167.152.22", 25565, session);
 
-
-
-        final Random random = new Random();
-
+        final SokeeseClient client2 = new SokeeseClient("91.167.152.22", 25565, session);
 
 
 
+
+
+
+        final AtomicInteger compteur = new AtomicInteger();
 
         for (int i = 0; i < 10_000; i++) {
-            byte[] array = new byte[1024 * 16];
+            byte[] array = new byte[1024];
             random.nextBytes(array);
 
             final Message message = new Message();
             message.channel = "i";
             message.recipient = "server";
-            message.content = new String(array, StandardCharsets.UTF_8);
-
-            array = null;
-
-            final AtomicLong atomicLong = new AtomicLong(System.nanoTime());
+            message.content = "o";
 
             client.send(message, (reply, state) -> {
-                System.out.println(System.nanoTime() - atomicLong.get());
+                System.out.println(compteur.incrementAndGet());
             });
 
-            TimeUnit.MILLISECONDS.sleep(10);
         }
+
+
 
 
 

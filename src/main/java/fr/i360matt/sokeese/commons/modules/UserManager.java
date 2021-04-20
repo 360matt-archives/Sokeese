@@ -9,11 +9,35 @@ import java.util.*;
  * Allows to list the connected users to the server.
  *
  * @author 360matt
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class UserManager implements Closeable {
-    final Map<String, ClientLogged> single = new HashMap<>();
-    final Map<String, Set<ClientLogged>> multiple = new HashMap<>();
+    private Map<String, ClientLogged> single = new HashMap<>();
+    private Map<String, Set<ClientLogged>> multiple = new HashMap<>();
+
+    private int count = 0;
+
+    /**
+     * Allows you to know how many clients are connected to the server
+     * @return number of clients are connected to the server
+     */
+    public final int getCount () {
+        return this.count;
+    }
+
+    /**
+     * Allows you to know how many clients of a certain user are connected to the server
+     * @return number of user's clients are connected to the server
+     */
+    public final int getUserCount (final String name) {
+        if (this.single == null)
+            return 0;
+        else if (this.single.containsKey(name)) {
+            return 1;
+        } else {
+            return this.multiple.get(name).size();
+        }
+    }
 
     /**
      * Allows to add the connected customer to his name.
@@ -22,6 +46,7 @@ public class UserManager implements Closeable {
      * @param client An instance of the client.
      */
     public final void addUser (final ClientLogged client) {
+        if (this.single == null) return;
         final ClientLogged probably = this.single.get(client.getSession().name);
         if (probably == null)
             this.single.put(client.getSession().name, client);
@@ -32,6 +57,7 @@ public class UserManager implements Closeable {
             this.multiple.put(client.getSession().name, newList);
             this.single.remove(client.getSession().name);
         }
+        this.count++;
     }
 
     /**
@@ -39,8 +65,14 @@ public class UserManager implements Closeable {
      * @param name The name of the user to delete.
      */
     public final void removeUser (final String name) {
-        this.single.remove(name);
-        this.multiple.remove(name);
+        if (this.single == null) return;
+        if (this.single.containsKey(name)) {
+            this.single.remove(name);
+            this.count--;
+        } else {
+            this.count -= this.multiple.get(name).size();
+            this.multiple.remove(name);
+        }
     }
 
     /**
@@ -48,11 +80,15 @@ public class UserManager implements Closeable {
      * @param client The reference of the user to be deleted.
      */
     public final void removeUser (final ClientLogged client) {
+        if (this.single == null) return;
         if (client.getSession() != null) {
-            if (this.single.containsValue(client))
+            if (this.single.containsValue(client)) {
                 this.single.remove(client.getSession().name);
-            else if (multiple.containsKey(client.getSession().name))
+                this.count--;
+            } else if (multiple.containsKey(client.getSession().name)) {
                 this.multiple.get(client.getSession().name).remove(client);
+                this.count--;
+            }
         }
     }
 
@@ -61,6 +97,7 @@ public class UserManager implements Closeable {
      * @param name The name of the user to log out.
      */
     public final void disconnect (final String name) {
+        if (this.single == null) return;
         final ClientLogged probably;
         if ((probably = this.single.get(name)) != null)
             probably.close();
@@ -75,6 +112,7 @@ public class UserManager implements Closeable {
      * Allows to disconnect all users
      */
     public final void disconnectAll () {
+        if (this.single == null) return;
         this.single.values().forEach(ClientLogged::close);
         this.multiple.values().forEach(clients -> {
             clients.forEach(ClientLogged::close);
@@ -87,13 +125,15 @@ public class UserManager implements Closeable {
      * @return The list containing the active references of the searched user.
      */
     public final Set<ClientLogged> getUser (final String name) {
-        final ClientLogged probably;
-        if ((probably = this.single.get(name)) != null)
-            return new HashSet<>(Collections.singletonList(probably));
-        else {
-            final Set<ClientLogged> probably2;
-            if ((probably2 = this.multiple.get(name)) != null)
-                return probably2;
+        if (this.single != null) {
+            final ClientLogged probably;
+            if ((probably = this.single.get(name)) != null)
+                return new HashSet<>(Collections.singletonList(probably));
+            else {
+                final Set<ClientLogged> probably2;
+                if ((probably2 = this.multiple.get(name)) != null)
+                    return probably2;
+            }
         }
         return new HashSet<>();
     }
@@ -103,9 +143,12 @@ public class UserManager implements Closeable {
      * @return The list containing all the references of connected users.
      */
     public final Set<ClientLogged> getAllUsers () {
-        final Set<ClientLogged> res = new HashSet<>(single.values());
-        this.multiple.values().forEach(res::addAll);
-        return res;
+        if (this.single != null) {
+            final Set<ClientLogged> res = new HashSet<>(single.values());
+            this.multiple.values().forEach(res::addAll);
+            return res;
+        }
+        return new HashSet<>();
     }
 
     /**
@@ -114,7 +157,7 @@ public class UserManager implements Closeable {
      * @return Whether the user is online or not.
      */
     public final boolean exist (final String name) {
-        return this.single.containsKey(name) || this.multiple.containsKey(name);
+        return this.single != null && (this.single.containsKey(name) || this.multiple.containsKey(name));
     }
 
     /**
@@ -122,7 +165,8 @@ public class UserManager implements Closeable {
      */
     @Override
     public void close () {
-        this.single.clear();
-        this.multiple.clear();
+        this.disconnectAll();
+        this.single = null;
+        this.multiple = null;
     }
 }

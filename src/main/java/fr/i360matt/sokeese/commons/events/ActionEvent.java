@@ -1,14 +1,17 @@
 package fr.i360matt.sokeese.commons.events;
 
+
 import fr.i360matt.sokeese.client.SokeeseClient;
 import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.server.ClientLogged;
 
+import java.util.function.Consumer;
+
 /**
  * Instances of this class represent an ACTION event
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @see Action
  */
 public class ActionEvent {
@@ -38,16 +41,32 @@ public class ActionEvent {
          * Serves as a shortcut to send a 'MESSAGE' request to the server faster.
          * @param message A 'MESSAGE' request.
          */
-        public final void send (final Message message) {
-            this.client.send(message);
+        public final void sendMessage (final Message message) {
+            this.client.sendMessage(message);
+        }
+
+        /**
+         * Serves as a shortcut to send a 'MESSAGE' request to the server faster.
+         * @param consumer A 'MESSAGE' request consumer.
+         */
+        public final void sendMessage (final Consumer<Message> consumer) {
+            this.client.sendMessage(consumer);
         }
 
         /**
          * Serves as a shortcut to send a 'ACTION' request to the server faster.
          * @param action A 'ACTION' request.
          */
-        public final void send (final Action action) {
-            this.client.send(action);
+        public final void sendAction (final Action action) {
+            this.client.sendAction(action);
+        }
+
+        /**
+         * Serves as a shortcut to send a 'ACTION' request to the server faster.
+         * @param consumer A 'ACTION' request consumer.
+         */
+        public final void sendAction (final Consumer<Action> consumer) {
+            this.client.sendAction(consumer);
         }
     }
 
@@ -79,7 +98,15 @@ public class ActionEvent {
          * @param message A 'MESSAGE' request.
          */
         public final void send (final Message message) {
-            this.instance.send(message);
+            this.instance.sendMessage(message);
+        }
+
+        /**
+         * Serves as a shortcut to send a 'MESSAGE' request to the server faster.
+         * @param consumer A 'MESSAGE' request consumer.
+         */
+        public final void sendMessage (final Consumer<Message> consumer) {
+            this.instance.sendMessage(consumer);
         }
 
         /**
@@ -87,7 +114,15 @@ public class ActionEvent {
          * @param action A 'ACTION' request.
          */
         public final void send (final Action action) {
-            this.instance.send(action);
+            this.instance.sendAction(action);
+        }
+
+        /**
+         * Serves as a shortcut to send a 'ACTION' request to the server faster.
+         * @param consumer A 'ACTION' request consumer.
+         */
+        public final void sendAction (final Consumer<Action> consumer) {
+            this.instance.sendAction(consumer);
         }
     }
 }

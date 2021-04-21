@@ -1,15 +1,14 @@
 import fr.i360matt.sokeese.client.SokeeseClient;
 import fr.i360matt.sokeese.commons.Session;
 import fr.i360matt.sokeese.commons.requests.Message;
-import fr.i360matt.sokeese.commons.requests.Reply;
 import fr.i360matt.sokeese.server.ServerOptions;
 import fr.i360matt.sokeese.server.SokeeseServer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 
 public class Tests {
@@ -17,31 +16,16 @@ public class Tests {
     public static void main (final String[] args) {
 
         final ServerOptions serverOptions = new ServerOptions();
-        serverOptions.setMaxClients(1);
+        serverOptions.setMaxClients(10); // only 10 clients accepted simultaneous
 
         final SokeeseServer server = new SokeeseServer(25565, "key", serverOptions);
 
-        final Random random = new Random();
+
+
 
         server.onMessage("none", (event, client) -> {
-
-            byte[] array = new byte[1024 * 1024 * 8];
-            random.nextBytes(array);
-
-            final Reply reply = new Reply();
-            reply.content = new String(array, StandardCharsets.UTF_8);
-
-            array = null;
-
-            /*event.reply(reply1 -> {
-                reply1.content = "truc";
-            });*/
-
             event.reply("truc");
-
-
         });
-
 
 
 
@@ -57,25 +41,42 @@ public class Tests {
 
 
 
+        final Message message = new Message();
+        message.channel = "un_Channel";
+        message.recipient = "server";
+        message.content = "du contenu";
 
-        final AtomicInteger compteur = new AtomicInteger();
+        client.sendMessage(message);
+
+
+
+
+
+        client.sendMessage(message1 -> {
+            message1.channel = "getRank";
+            message1.recipient = "proxy";
+            message1.content = "360mat";
+        });
+
+
+
+
+        final Random random = new Random();
+
 
         for (int i = 0; i < 10_000; i++) {
             byte[] array = new byte[1024];
             random.nextBytes(array);
 
-            final Message message = new Message();
-            message.channel = "i";
-            message.recipient = "server";
-            message.content = "o";
-
-            client.send(message, (reply, state) -> {
-                System.out.println(compteur.incrementAndGet());
+            client.sendMessage(message1 -> {
+                message1.channel = "i";
+                message1.recipient = "server";
+                message1.content = "o";
+            }, (reply, state) -> {
+               // System.out.println(compteur.incrementAndGet());
             });
 
         }
-
-
 
 
 

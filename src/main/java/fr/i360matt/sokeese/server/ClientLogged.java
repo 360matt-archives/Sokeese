@@ -16,12 +16,13 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Each session will have its own instance of this class.
  *
  * @author 360matt
- * @version 1.1.0
+ * @version 1.2.0
  *
  * @see SokeeseServer
  */
@@ -87,7 +88,7 @@ public class ClientLogged implements Closeable {
                                     final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
 
                                     if ((!message.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
-                                        this.server.send(message.recipient, message);
+                                        this.server.sendMessage(message);
                                     }
                                 }
                             } else if (obj instanceof Reply) {
@@ -101,7 +102,7 @@ public class ClientLogged implements Closeable {
                                     final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
 
                                     if ((!reply.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
-                                        this.server.send(reply.recipient, reply);
+                                        this.server.sendReply(reply);
                                     }
                                 }
                             }
@@ -122,62 +123,142 @@ public class ClientLogged implements Closeable {
     }
 
 
+
+
     /**
-     * Allows to send the client a 'MESSAGE', 'ACTION' or 'REPLY' request.
-     * @param obj A 'MESSAGE', 'ACTION' or 'REPLY' request.
+     * Allows to send the client a 'MESSAGE' request.
+     * @param message The message request.
      *
      * @see Message
-     * @see Action
-     * @see Reply
      */
-    public final void send (final Object obj) {
+    public final void sendMessage (final Message message) {
         if (!this.isClientEnabled) return;
-        if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            try {
-                this.sender.writeObject(obj);
-                this.sender.flush();
-            } catch (final IOException ignored) { }
-        }
+        try {
+            this.sender.writeObject(message);
+            this.sender.flush();
+        } catch (final IOException ignored) { }
     }
 
     /**
-     * Allows to send the client a 'MESSAGE', 'ACTION' or 'REPLY' request.
+     * Allows to send the client a 'ACTION' request.
+     * @param action The action request.
+     *
+     * @see Action
+     */
+    public final void sendAction (final Action action) {
+        if (!this.isClientEnabled) return;
+        try {
+            this.sender.writeObject(action);
+            this.sender.flush();
+        } catch (final IOException ignored) { }
+    }
+
+    /**
+     * Allows to send the client a 'MESSAGE' request.
+     * @param consumer The message request consumer.
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Consumer<Message> consumer) {
+        if (!this.isClientEnabled) return;
+        try {
+            final Message message = new Message();
+            consumer.accept(message);
+
+            this.sender.writeObject(message);
+            this.sender.flush();
+        } catch (final IOException ignored) { }
+    }
+
+    /**
+     * Allows to send the client a 'ACTION' request.
+     * @param consumer The action request consumer.
+     *
+     * @see Action
+     */
+    public final void sendAction (final Consumer<Action> consumer) {
+        if (!this.isClientEnabled) return;
+        try {
+            final Action action = new Action();
+            consumer.accept(action);
+
+            this.sender.writeObject(action);
+            this.sender.flush();
+        } catch (final IOException ignored) { }
+    }
+
+    /**
+     * Allows to send the client a 'REPLY' request.
+     * @param reply The reply request.
+     *
+     * @see Reply
+     */
+    public final void sendReply (final Reply reply) {
+        if (!this.isClientEnabled) return;
+        try {
+            this.sender.writeObject(reply);
+            this.sender.flush();
+        } catch (final IOException ignored) { }
+    }
+
+    /**
+     * Allows to send the client a 'MESSAGE' request.
      * And wait for a response within a chosen delay
      *
-     * @param obj A 'MESSAGE', 'ACTION' or 'REPLY' request.
+     * @param message A 'MESSAGE' request.
      * @param delay The maximum waiting time.
      * @param consumer The event callback that will contain the response
      *                 (which can be null if the delay has expired).
      *
      * @see Message
-     * @see Action
-     * @see Reply
      */
-    public final void send (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
+    public final void sendMessage (final Message message, final int delay, final BiConsumer<Reply, Boolean> consumer) {
         if (!this.isClientEnabled) return;
-        if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            if (obj instanceof Message) {
-                final Message message = (Message) obj;
-                message.idRequest = this.server.random.nextLong();
-                obj = message;
 
-                this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, consumer);
-            }
+        message.idRequest = this.server.random.nextLong();
+        this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, consumer);
 
-            try {
-                this.sender.writeObject(obj);
-                this.sender.flush();
-            } catch (final IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            this.sender.writeObject(message);
+            this.sender.flush();
+        } catch (final IOException e) {
+            e.printStackTrace();
         }
     }
 
     /**
-     * Allows to send the client a 'MESSAGE', 'ACTION' or 'REPLY' request.
+     * Allows to send the client a 'MESSAGE' request.
+     * And wait for a response within a chosen delay
+     *
+     * @param messageConsumer A 'MESSAGE' request consumer.
+     * @param delay The maximum waiting time.
+     * @param eventConsumer The event callback that will contain the response
+     *                 (which can be null if the delay has expired).
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Consumer<Message> messageConsumer, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
+        if (!this.isClientEnabled) return;
+
+        final Message message = new Message();
+        messageConsumer.accept(message);
+
+        message.idRequest = this.server.random.nextLong();
+        this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, eventConsumer);
+
+        try {
+            this.sender.writeObject(message);
+            this.sender.flush();
+        } catch (final IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Allows to send the client a 'MESSAGE' request.
      * And wait for a response within 200ms
      *
-     * @param obj A 'MESSAGE', 'ACTION' or 'REPLY' request.
+     * @param message A 'MESSAGE' request.
      * @param consumer The event callback that will contain the response
      *                 (which can be null if the delay has expired).
      *
@@ -185,8 +266,24 @@ public class ClientLogged implements Closeable {
      * @see Action
      * @see Reply
      */
-    public final void send (final Object obj, final BiConsumer<Reply, Boolean> consumer) {
-        this.send(obj, 200, consumer);
+    public final void sendMessage (final Message message, final BiConsumer<Reply, Boolean> consumer) {
+        this.sendMessage(message, 200, consumer);
+    }
+
+    /**
+     * Allows to send the client a 'MESSAGE' request consumer.
+     * And wait for a response within 200ms
+     *
+     * @param messageConsumer A 'MESSAGE' request consumer.
+     * @param eventConsumer The event callback that will contain the response
+     *                 (which can be null if the delay has expired).
+     *
+     * @see Message
+     * @see Action
+     * @see Reply
+     */
+    public final void sendMessage (final Consumer<Message> messageConsumer, final BiConsumer<Reply, Boolean> eventConsumer) {
+        this.sendMessage(messageConsumer, 200, eventConsumer);
     }
 
 

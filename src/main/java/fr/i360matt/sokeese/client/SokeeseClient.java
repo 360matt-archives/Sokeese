@@ -9,10 +9,16 @@ import fr.i360matt.sokeese.commons.requests.AuthResponse;
 import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.commons.requests.Reply;
 
-import java.io.*;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -21,7 +27,7 @@ import java.util.function.Consumer;
  * The server must be of the same type and version as the client.
  *
  * @author 360matt
- * @version 1.1.0
+ * @version 1.2.0
  */
 public class SokeeseClient implements Closeable {
 
@@ -173,8 +179,53 @@ public class SokeeseClient implements Closeable {
         }
     }
 
+
     /**
-     * Sends a Message or Action type request to the server
+     * Sends a Message request to the server
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * @param consumer The Message request consumer.
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Consumer<Message> consumer) {
+        if (!this.isEnabled) return;
+
+        final Message obj = new Message();
+        consumer.accept(obj);
+
+        try {
+            this.sender.writeObject(obj);
+            this.sender.flush();
+        } catch (final IOException e) {
+            // e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sends a Action request to the server.
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * @param consumer The Action request consumer.
+     *
+     * @see Action
+     */
+    public final void sendAction (final Consumer<Action> consumer) {
+        if (!this.isEnabled) return;
+
+        final Action obj = new Action();
+        consumer.accept(obj);
+
+        try {
+            this.sender.writeObject(obj);
+            this.sender.flush();
+        } catch (final IOException e) {
+            // e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sends a Message request to the server.
      * If the client is not connected, the request will be placed on a waiting list to be sent later.
      *
      * @param obj The request which must be of the Message or Action type.
@@ -183,56 +234,115 @@ public class SokeeseClient implements Closeable {
      * @see Action
      * @see Reply
      */
-    public final void send (final Object obj) {
+    public final void sendMessage (final Message obj) {
         if (!this.isEnabled) return;
-        if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            try {
-                this.sender.writeObject(obj);
-                this.sender.flush();
-            } catch (final IOException e) {
-                // e.printStackTrace();
-            }
+        try {
+            this.sender.writeObject(obj);
+            this.sender.flush();
+        } catch (final IOException e) {
+            // e.printStackTrace();
         }
     }
 
     /**
-     * Sends a Message or Action type request to the server
+     * Sends a Action request to the server.
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * @param obj The request which must be of the Message or Action type.
+     *
+     * @see Message
+     * @see Action
+     * @see Reply
+     */
+    public final void sendAction (final Action obj) {
+        if (!this.isEnabled) return;
+        try {
+            this.sender.writeObject(obj);
+            this.sender.flush();
+        } catch (final IOException e) {
+            // e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sends a Reply request to the server
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * @param obj The Reply request.
+     *
+     * @see Reply
+     */
+    public void sendReply (final Reply obj) {
+        if (!this.isEnabled) return;
+        try {
+            this.sender.writeObject(obj);
+            this.sender.flush();
+        } catch (final IOException e) {
+            // e.printStackTrace();
+        }
+    }
+
+
+
+    /**
+     * Sends a Message request to the server.
      * If the client is not connected, the request will be placed on a waiting list to be sent later.
      *
      * This method also retrieves the response, which will be provided in a consumer.
      * In case of no response before the chosen delay, the consumer will be executed with the second type set to FALSE.
      *
-     * @param obj The request which must be of the Message or Action type.
+     * @param msgConsumer The message request consumer
      * @param delay The maximum amount of time to wait before the boolean is set to FALSE.
-     * @param consumer The callback defined by the developer.
+     * @param eventConsumer The callback defined by the developer.
      *
      * @see Message
-     * @see Action
-     * @see Reply
      */
-    public final void send (Object obj, final int delay, final BiConsumer<Reply, Boolean> consumer) {
+    public final void sendMessage (final Consumer<Message> msgConsumer, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
         if (!this.isEnabled) return;
-
         try {
-            if (obj instanceof Message) {
-                final Message message = (Message) obj;
-                message.idRequest = random.nextLong();
+            final Message message = new Message();
+            msgConsumer.accept(message);
 
-                this.catcherManager.addReplyEvent(message.idRequest, delay, consumer);
+            message.idRequest = random.nextLong();
 
-                this.sender.writeObject(message);
-                this.sender.flush();
+            this.catcherManager.addReplyEvent(message.idRequest, delay, eventConsumer);
+            // we save the reply-event
 
-            } else if (obj instanceof Action || obj instanceof Reply) {
-                this.sender.writeObject(obj);
-                this.sender.flush();
-            }
+            this.sender.writeObject(message);
+            this.sender.flush();
+
         } catch (final IOException ignored) { }
-
     }
 
     /**
-     * Sends a Message or Action type request to the server
+     * Sends a Message request to the server.
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * This method also retrieves the response, which will be provided in a consumer.
+     * In case of no response before the chosen delay, the consumer will be executed with the second type set to FALSE.
+     *
+     * @param message The message request.
+     * @param delay The maximum amount of time to wait before the boolean is set to FALSE.
+     * @param eventConsumer The callback defined by the developer.
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Message message, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
+        if (!this.isEnabled) return;
+        try {
+            message.idRequest = random.nextLong();
+
+            this.catcherManager.addReplyEvent(message.idRequest, delay, eventConsumer);
+            // we save the reply-event
+
+            this.sender.writeObject(message);
+            this.sender.flush();
+
+        } catch (final IOException ignored) { }
+    }
+
+    /**
+     * Sends a Message request to the server.
      * If the client is not connected, the request will be placed on a waiting list to be sent later.
      *
      * This method also retrieves the response, which will be provided in a consumer.
@@ -240,15 +350,35 @@ public class SokeeseClient implements Closeable {
      *
      * Use this.send(obj, int, consumer) to set a custom delay.
      *
-     * @param obj The request which must be of the Message or Action type.
-     * @param consumer The callback defined by the developer.
+     * @param msgConsumer The message request consumer.
+     * @param eventConsumer The callback defined by the developer.
      *
      * @see Message
      * @see Action
      * @see Reply
      */
-    public final void send (final Object obj, final BiConsumer<Reply, Boolean> consumer) {
-        this.send(obj, 200, consumer);
+    public final void sendMessage (final Consumer<Message> msgConsumer, final BiConsumer<Reply, Boolean> eventConsumer) {
+        this.sendMessage(msgConsumer, 200, eventConsumer);
+    }
+
+    /**
+     * Sends a Message request to the server.
+     * If the client is not connected, the request will be placed on a waiting list to be sent later.
+     *
+     * This method also retrieves the response, which will be provided in a consumer.
+     * The default time is 200ms.
+     *
+     * Use this.send(obj, int, consumer) to set a custom delay.
+     *
+     * @param message The message request.
+     * @param eventConsumer The callback defined by the developer.
+     *
+     * @see Message
+     * @see Action
+     * @see Reply
+     */
+    public final void sendMessage (final Message message, final BiConsumer<Reply, Boolean> eventConsumer) {
+        this.sendMessage(message, 200, eventConsumer);
     }
 
     /**

@@ -17,13 +17,14 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Allows to receive connections and communicate with SokeeseClient clients.
  * The client must be of the same type and version as the server.
  *
  * @author 360matt
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class SokeeseServer implements Closeable {
 
@@ -92,29 +93,102 @@ public class SokeeseServer implements Closeable {
      * @see Action
      * @see Reply
      */
-    public final void send (final String recipient, final Object obj) throws IOException {
+    private void send (final String recipient, final Object obj) throws IOException {
         if (!isEnabled) return;
 
-        if (obj instanceof Message || obj instanceof Action || obj instanceof Reply) {
-            // be sure we are sending a good packet
-
-            if (!recipient.equalsIgnoreCase("server")) {
-
-                final ServerOptions.Level level = this.getOptions().getLevelMessages();
-
-                if (recipient.equalsIgnoreCase("all") && level.getLevel() == 3) { // send to every clients
-                    for (final ClientLogged users : this.getUserManager().getAllUsers()) {
-                        users.sender.writeObject(obj);
-                        users.sender.flush();
-                    }
-                } else if (level.getLevel() == 1) { // send to unique client (or multiple terminals with the same name)
-                    for (final ClientLogged users : this.getUserManager().getUser(recipient)) {
-                        users.sender.writeObject(obj);
-                        users.sender.flush();
-                    }
-                }
+        final ServerOptions.Level level = this.getOptions().getLevelMessages();
+        if (recipient.equalsIgnoreCase("all") && level.getLevel() == 3) {
+            // send to every clients
+            for (final ClientLogged users : this.getUserManager().getAllUsers()) {
+                users.sender.writeObject(obj);
+                users.sender.flush();
+            }
+        } else if (level.getLevel() == 1 && !recipient.equalsIgnoreCase("server")) {
+            // send to unique client (or multiple terminals with the same name)
+            for (final ClientLogged users : this.getUserManager().getUser(recipient)) {
+                users.sender.writeObject(obj);
+                users.sender.flush();
             }
         }
+    }
+
+    /**
+     * Sends a Message request to one or multiple clients
+     *
+     * The name of the client who should receive the request:
+     *                  'SERVER' -> send the intended request to the server.
+     *                  'ALL'    -> send the intended request to all clients except the server.
+     *                    *      -> send the intended request to one client.
+     * @param message The message request.
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Message message) throws IOException {
+        this.send(message.recipient, message);
+    }
+
+    /**
+     * Sends a Action request to one or multiple clients
+     *
+     * @param recipient The name of the client who should receive the request:
+     *                  'SERVER' -> send the intended request to the server.
+     *                  'ALL'    -> send the intended request to all clients except the server.
+     *                    *      -> send the intended request to one client.
+     * @param action The action request.
+     *
+     * @see Action
+     */
+    public final void sendAction (final String recipient, final Action action) throws IOException {
+        this.send(recipient, action);
+    }
+
+    /**
+     * Sends a Message request to one or multiple clients
+     *
+     * The name of the client who should receive the request:
+     *                  'SERVER' -> send the intended request to the server.
+     *                  'ALL'    -> send the intended request to all clients except the server.
+     *                    *      -> send the intended request to one client.
+     * @param reply The reply request.
+     *
+     * @see Message
+     */
+    protected final void sendReply (final Reply reply) throws IOException {
+        this.send(reply.recipient, reply);
+    }
+
+    /**
+     * Sends a Message request to one or multiple clients
+     *
+     * The name of the client who should receive the request:
+     *                  'SERVER' -> send the intended request to the server.
+     *                  'ALL'    -> send the intended request to all clients except the server.
+     *                    *      -> send the intended request to one client.
+     * @param consumer The message request consumer.
+     *
+     * @see Message
+     */
+    public final void sendMessage (final Consumer<Message> consumer) throws IOException {
+        final Message message = new Message();
+        consumer.accept(message);
+        this.send(message.recipient, message);
+    }
+
+    /**
+     * Sends a Action request to one or multiple clients
+     *
+     * @param recipient The name of the client who should receive the request:
+     *                  'SERVER' -> send the intended request to the server.
+     *                  'ALL'    -> send the intended request to all clients except the server.
+     *                    *      -> send the intended request to one client.
+     * @param consumer The action request consumer.
+     *
+     * @see Action
+     */
+    public final void sendAction (final String recipient, final Consumer<Action> consumer) throws IOException {
+        final Action action = new Action();
+        consumer.accept(action);
+        this.send(recipient, action);
     }
 
     /**

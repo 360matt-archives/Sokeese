@@ -47,15 +47,15 @@ public class UserManager implements Closeable {
      */
     public final void addUser (final ClientLogged client) {
         if (this.single == null) return;
-        final ClientLogged probably = this.single.get(client.getSession().name);
+        final ClientLogged probably = this.single.get(client.getSession().getName());
         if (probably == null)
-            this.single.put(client.getSession().name, client);
+            this.single.put(client.getSession().getName(), client);
         else {
             final Set<ClientLogged> newList = new HashSet<>();
             newList.add(probably);
             newList.add(client);
-            this.multiple.put(client.getSession().name, newList);
-            this.single.remove(client.getSession().name);
+            this.multiple.put(client.getSession().getName(), newList);
+            this.single.remove(client.getSession().getName());
         }
         this.count++;
     }
@@ -83,10 +83,10 @@ public class UserManager implements Closeable {
         if (this.single == null) return;
         if (client.getSession() != null) {
             if (this.single.containsValue(client)) {
-                this.single.remove(client.getSession().name);
+                this.single.remove(client.getSession().getName());
                 this.count--;
-            } else if (multiple.containsKey(client.getSession().name)) {
-                this.multiple.get(client.getSession().name).remove(client);
+            } else if (multiple.containsKey(client.getSession().getName())) {
+                this.multiple.get(client.getSession().getName()).remove(client);
                 this.count--;
             }
         }

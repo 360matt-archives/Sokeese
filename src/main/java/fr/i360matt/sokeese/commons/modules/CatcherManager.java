@@ -1,5 +1,6 @@
 package fr.i360matt.sokeese.commons.modules;
 
+
 import fr.i360matt.sokeese.client.SokeeseClient;
 import fr.i360matt.sokeese.commons.events.ActionEvent;
 import fr.i360matt.sokeese.commons.events.MessageEvent;
@@ -23,9 +24,9 @@ import java.util.function.Consumer;
  * @author 360matt
  * @version 1.0.0
  */
-public class CatcherManager {
+public final class CatcherManager {
 
-    public static class CLIENT implements Closeable {
+    public final static class CLIENT implements Closeable {
         private final Map<String, Set<Consumer<MessageEvent.CLIENT>>> messageEvents = new HashMap<>();
         private final Map<String, Set<Consumer<ActionEvent.CLIENT>>> actionEvents = new HashMap<>();
         private final ExpirableCallback<Long, BiConsumer<Reply, Boolean>> replyEvents = new ExpirableCallback<>();
@@ -95,8 +96,8 @@ public class CatcherManager {
          *
          * @see Message
          */
-        public void handleMessage (final SokeeseClient client, final Message message) {
-            final Set<Consumer<MessageEvent.CLIENT>> candidates = messageEvents.get(message.channel);
+        public final void handleMessage (final SokeeseClient client, final Message message) {
+            final Set<Consumer<MessageEvent.CLIENT>> candidates = messageEvents.get(message.getChannel());
             if (candidates != null) {
                 for (final Consumer<MessageEvent.CLIENT> consumer : candidates)
                     consumer.accept(new MessageEvent.CLIENT(client, message));
@@ -110,8 +111,8 @@ public class CatcherManager {
          *
          * @see Action
          */
-        public void handleAction (final SokeeseClient client, final Action action) {
-            final Set<Consumer<ActionEvent.CLIENT>> candidates = actionEvents.get(action.name);
+        public final void handleAction (final SokeeseClient client, final Action action) {
+            final Set<Consumer<ActionEvent.CLIENT>> candidates = actionEvents.get(action.getName());
             if (candidates != null) {
                 for (final Consumer<ActionEvent.CLIENT> consumer : candidates)
                     consumer.accept(new ActionEvent.CLIENT(client, action));
@@ -124,11 +125,11 @@ public class CatcherManager {
          *
          * @see Reply
          */
-        public void handleReply (final Reply reply) {
-            final BiConsumer<Reply, Boolean> candidate = replyEvents.get(reply.idRequest);
+        public final void handleReply (final Reply reply) {
+            final BiConsumer<Reply, Boolean> candidate = replyEvents.get(reply.getIdRequest());
             if (candidate != null) {
                 candidate.accept(reply, true);
-                replyEvents.remove(reply.idRequest);
+                replyEvents.remove(reply.getIdRequest());
             }
         }
     }
@@ -136,7 +137,7 @@ public class CatcherManager {
 
 
 
-    public static class SERVER implements Closeable {
+    public final static class SERVER implements Closeable {
         private final Map<String, Set<BiConsumer<MessageEvent.SERVER, ClientLogged>>> messageEvents = new HashMap<>();
         private final Map<String, Set<BiConsumer<ActionEvent.SERVER, ClientLogged>>> actionEvents = new HashMap<>();
         private final ExpirableCallback<Long, BiConsumer<Reply, Boolean>> replyEvents = new ExpirableCallback<>();
@@ -206,8 +207,8 @@ public class CatcherManager {
          *
          * @see Message
          */
-        public void handleMessage (final Message message, final ClientLogged client) {
-            final Set<BiConsumer<MessageEvent.SERVER, ClientLogged>> candidates = messageEvents.get(message.channel);
+        public final void handleMessage (final Message message, final ClientLogged client) {
+            final Set<BiConsumer<MessageEvent.SERVER, ClientLogged>> candidates = messageEvents.get(message.getChannel());
             if (candidates != null) {
                 for (final BiConsumer<MessageEvent.SERVER, ClientLogged> consumer : candidates)
                     consumer.accept(new MessageEvent.SERVER(client, message), client);
@@ -221,8 +222,8 @@ public class CatcherManager {
          *
          * @see Action
          */
-        public void handleAction (final Action action, final ClientLogged client) {
-            final Set<BiConsumer<ActionEvent.SERVER, ClientLogged>> candidates = actionEvents.get(action.name);
+        public final void handleAction (final Action action, final ClientLogged client) {
+            final Set<BiConsumer<ActionEvent.SERVER, ClientLogged>> candidates = actionEvents.get(action.getName());
             if (candidates != null) {
                 for (final BiConsumer<ActionEvent.SERVER, ClientLogged> consumer : candidates)
                     consumer.accept(new ActionEvent.SERVER(client, action), client);
@@ -235,11 +236,11 @@ public class CatcherManager {
          *
          * @see Reply
          */
-        public void handleReply (final Reply reply) {
-            final BiConsumer<Reply, Boolean> candidate = replyEvents.get(reply.idRequest);
+        public final void handleReply (final Reply reply) {
+            final BiConsumer<Reply, Boolean> candidate = replyEvents.get(reply.getIdRequest());
             if (candidate != null) {
                 candidate.accept(reply, true);
-                replyEvents.remove(reply.idRequest);
+                replyEvents.remove(reply.getIdRequest());
             }
         }
     }

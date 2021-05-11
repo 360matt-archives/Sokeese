@@ -1,6 +1,7 @@
 package fr.i360matt.sokeese.commons.modules;
 
-import fr.i360matt.sokeese.commons.Session;
+
+import fr.i360matt.sokeese.commons.requests.Session;
 import fr.i360matt.sokeese.utils.Sha256;
 
 /**
@@ -30,7 +31,7 @@ public class LoginManager {
      * @return The corresponding token.
      */
     public final String getTokenRelated (final Session session) {
-        return Sha256.hash(session.name + session.group + this.privateKey);
+        return Sha256.hash(session.getName() + session.getGroup() + this.privateKey);
     }
 
     /**
@@ -39,7 +40,7 @@ public class LoginManager {
      * @return If the token entered corresponds to the token linked to the account.
      */
     public final boolean goodCredentials (final Session session) {
-        return (session != null && getTokenRelated(session).equals(session.token));
+        return (session != null && getTokenRelated(session).equals(session.getToken()));
     }
 
 }

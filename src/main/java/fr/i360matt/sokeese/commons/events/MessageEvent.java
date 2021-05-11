@@ -1,20 +1,22 @@
 package fr.i360matt.sokeese.commons.events;
 
+
 import fr.i360matt.sokeese.client.SokeeseClient;
 import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.commons.requests.Reply;
 import fr.i360matt.sokeese.server.ClientLogged;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
  * Instances of this class represent an MESSAGE event
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @see Message
  */
-public class MessageEvent {
+public final class MessageEvent {
 
     public static final class CLIENT {
         private final Message message;
@@ -43,11 +45,15 @@ public class MessageEvent {
          * @param content The response.
          */
         public final void reply (final Object content) {
-            if (this.message.idRequest != 0) {
+            if (this.message.getIdRequest() != 0) {
                 final Reply reply = new Reply();
-                reply.idRequest = this.message.idRequest;
-                reply.channel = this.message.channel;
-                reply.content = content;
+
+
+
+                reply.setIdRequest(this.message.getIdRequest());
+                reply.setRecipient(this.message.getSender());
+                reply.setChannel(this.message.getChannel());
+                reply.setContent(content);
                 this.client.sendReply(reply);
             }
         }
@@ -60,9 +66,10 @@ public class MessageEvent {
             final Reply reply = new Reply();
             function.accept(reply);
 
-            if (this.message.idRequest != 0) {
-                reply.idRequest = this.message.idRequest;
-                reply.channel = this.message.channel;
+            if (this.message.getIdRequest() != 0) {
+                reply.setIdRequest(this.message.getIdRequest());
+                reply.setRecipient(this.message.getSender());
+                reply.setChannel(this.message.getChannel());
                 this.client.sendReply(reply);
             }
         }
@@ -98,6 +105,54 @@ public class MessageEvent {
         public final void sendAction (final Consumer<Action> consumer) {
             this.client.sendAction(consumer);
         }
+
+        /**
+         * Shortcut to retrieve the name of the channel.
+         * @return The channel name.
+         */
+        public final String getChannel () {
+            return this.message.getChannel();
+        }
+
+        /**
+         * Shortcut to retrieve the name of the sender.
+         * @return The sender name.
+         */
+        public final String getSender () {
+            return this.message.getSender();
+        }
+
+        /**
+         * Shortcut to retrieve content under a requested type.
+         * @param <T> Type that should be returned (not required).
+         * @return the content of the query under type T!;
+         */
+        public final <T> T getContent () {
+            try {
+                return (T) this.message.getContent();
+            } catch (final Exception e) {
+                return null;
+            }
+        }
+
+
+        /**
+         * Allows to retrieve the content of the request as Map.
+         * If the content is not of this type, an empty Map will be returned.
+         *
+         * @return Content as map / or empty if the type is not a Map.
+         */
+        public <K, V> Map<K, V> getMap () {
+            return this.message.getMap();
+        }
+
+        /**
+         * Allows you to retrieve the content of the as Map query in a lambda
+         * If the content is not of this type, an empty Map will be returned.
+         */
+        public <K, V> void getMap (final Consumer<Map<K, V>> consumer) {
+            this.message.getMap(consumer);
+        }
     }
 
 
@@ -128,11 +183,12 @@ public class MessageEvent {
          * @param content The response.
          */
         public final void reply (final Object content) {
-            if (this.message.idRequest != 0) {
+            if (this.message.getIdRequest() != 0) {
                 final Reply reply = new Reply();
-                reply.idRequest = this.message.idRequest;
-                reply.channel = this.message.channel;
-                reply.content = content;
+                reply.setIdRequest(this.message.getIdRequest());
+                reply.setRecipient(this.message.getSender());
+                reply.setChannel(this.message.getChannel());
+                reply.setContent(content);
                 this.instance.sendReply(reply);
             }
         }
@@ -145,9 +201,10 @@ public class MessageEvent {
             final Reply reply = new Reply();
             function.accept(reply);
 
-            if (this.message.idRequest != 0) {
-                reply.idRequest = this.message.idRequest;
-                reply.channel = this.message.channel;
+            if (this.message.getIdRequest() != 0) {
+                reply.setIdRequest(this.message.getIdRequest());
+                reply.setRecipient(this.message.getSender());
+                reply.setChannel(this.message.getChannel());
                 this.instance.sendReply(reply);
             }
         }
@@ -182,6 +239,54 @@ public class MessageEvent {
          */
         public final void sendAction (final Consumer<Action> consumer) {
             this.instance.sendAction(consumer);
+        }
+
+
+        /**
+         * Shortcut to retrieve the name of the channel.
+         * @return The channel name.
+         */
+        public final String getChannel () {
+            return this.message.getChannel();
+        }
+
+        /**
+         * Shortcut to retrieve the name of the sender.
+         * @return The sender name.
+         */
+        public final String getSender () {
+            return this.message.getSender();
+        }
+
+        /**
+         * Shortcut to retrieve content under a requested type.
+         * @param <T> Type that should be returned (not required).
+         * @return the content of the query under type T!;
+         */
+        public final <T> T getContent () {
+            try {
+                return (T) this.message.getContent();
+            } catch (final Exception e) {
+                return null;
+            }
+        }
+
+        /**
+         * Allows to retrieve the content of the request as Map.
+         * If the content is not of this type, an empty Map will be returned.
+         *
+         * @return Content as map / or empty if the type is not a Map.
+         */
+        public <K, V> Map<K, V> getMap () {
+            return this.message.getMap();
+        }
+
+        /**
+         * Allows you to retrieve the content of the as Map query in a lambda
+         * If the content is not of this type, an empty Map will be returned.
+         */
+        public <K, V> void getMap (final Consumer<Map<K, V>> consumer) {
+            this.message.getMap(consumer);
         }
     }
 

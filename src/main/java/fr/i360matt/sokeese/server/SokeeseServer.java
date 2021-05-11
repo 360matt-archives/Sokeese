@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  * The client must be of the same type and version as the server.
  *
  * @author 360matt
- * @version 1.1.0
+ * @version 1.2.0
  */
 public class SokeeseServer implements Closeable {
 
@@ -124,7 +124,7 @@ public class SokeeseServer implements Closeable {
      * @see Message
      */
     public final void sendMessage (final Message message) throws IOException {
-        this.send(message.recipient, message);
+        this.send(message.getRecipient(), message);
     }
 
     /**
@@ -154,7 +154,7 @@ public class SokeeseServer implements Closeable {
      * @see Message
      */
     protected final void sendReply (final Reply reply) throws IOException {
-        this.send(reply.recipient, reply);
+        this.send(reply.getRecipient(), reply);
     }
 
     /**
@@ -171,7 +171,7 @@ public class SokeeseServer implements Closeable {
     public final void sendMessage (final Consumer<Message> consumer) throws IOException {
         final Message message = new Message();
         consumer.accept(message);
-        this.send(message.recipient, message);
+        this.send(message.getRecipient(), message);
     }
 
     /**

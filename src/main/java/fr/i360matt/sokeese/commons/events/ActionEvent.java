@@ -6,15 +6,16 @@ import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.Message;
 import fr.i360matt.sokeese.server.ClientLogged;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
  * Instances of this class represent an ACTION event
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @see Action
  */
-public class ActionEvent {
+public final class ActionEvent {
     public static final class CLIENT {
         private final Action action;
         private final SokeeseClient client;
@@ -67,6 +68,32 @@ public class ActionEvent {
          */
         public final void sendAction (final Consumer<Action> consumer) {
             this.client.sendAction(consumer);
+        }
+
+        /**
+         * Shortcut used to retrieve the name of the action
+         * @return The name of action.
+         */
+        public final String getName () {
+            return action.getName();
+        }
+
+        /**
+         * Allows to retrieve the content of the request as Map.
+         * If the content is not of this type, an empty Map will be returned.
+         *
+         * @return Content as map / or empty if the type is not a Map.
+         */
+        public <K, V> Map<K, V> getMap () {
+            return this.action.getMap();
+        }
+
+        /**
+         * Allows you to retrieve the content of the as Map query in a lambda
+         * If the content is not of this type, an empty Map will be returned.
+         */
+        public <K, V> void getMap (final Consumer<Map<K, V>> consumer) {
+            this.action.getMap(consumer);
         }
     }
 
@@ -123,6 +150,32 @@ public class ActionEvent {
          */
         public final void sendAction (final Consumer<Action> consumer) {
             this.instance.sendAction(consumer);
+        }
+
+        /**
+         * Shortcut used to retrieve the name of the action
+         * @return The name of action.
+         */
+        public final String getName () {
+            return action.getName();
+        }
+
+        /**
+         * Allows to retrieve the content of the request as Map.
+         * If the content is not of this type, an empty Map will be returned.
+         *
+         * @return Content as map / or empty if the type is not a Map.
+         */
+        public <K, V> Map<K, V> getMap () {
+            return this.action.getMap();
+        }
+
+        /**
+         * Allows you to retrieve the content of the as Map query in a lambda
+         * If the content is not of this type, an empty Map will be returned.
+         */
+        public <K, V> void getMap (final Consumer<Map<K, V>> consumer) {
+            this.action.getMap(consumer);
         }
     }
 }

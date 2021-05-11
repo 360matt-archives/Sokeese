@@ -1,6 +1,7 @@
 package fr.i360matt.sokeese.server;
 
-import fr.i360matt.sokeese.commons.Session;
+
+import fr.i360matt.sokeese.commons.requests.Session;
 import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.AuthResponse;
 import fr.i360matt.sokeese.commons.requests.Message;
@@ -22,7 +23,7 @@ import java.util.function.Consumer;
  * Each session will have its own instance of this class.
  *
  * @author 360matt
- * @version 1.2.0
+ * @version 1.3.0
  *
  * @see SokeeseServer
  */
@@ -79,29 +80,29 @@ public class ClientLogged implements Closeable {
                                 this.server.getCatcherManager().handleAction((Action) obj, this);
                             else if (obj instanceof Message) {
                                 final Message message = (Message) obj;
-                                message.sender = this.session.name;
+                                message.setSender(this.session.getName());
                                 // set this session name as sender name
 
-                                if (message.recipient.equalsIgnoreCase("server")) { // to the server
+                                if (message.getRecipient().equalsIgnoreCase("server")) { // to the server
                                     this.server.getCatcherManager().handleMessage(message, this);
                                 } else { // to be transmitted
                                     final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
 
-                                    if ((!message.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
+                                    if ((!message.getRecipient().equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
                                         this.server.sendMessage(message);
                                     }
                                 }
                             } else if (obj instanceof Reply) {
                                 final Reply reply = (Reply) obj;
-                                reply.sender = this.session.name;
+                                reply.setSender(this.session.getName());
                                 // set this session name as sender name
 
-                                if (reply.recipient.equalsIgnoreCase("server")) { // to the server
+                                if (reply.getRecipient().equalsIgnoreCase("server")) { // to the server
                                     this.server.getCatcherManager().handleReply(reply);
                                 } else { // to be transmitted
                                     final ServerOptions.Level level = this.server.getOptions().getLevelMessages();
 
-                                    if ((!reply.recipient.equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
+                                    if ((!reply.getRecipient().equalsIgnoreCase("ALL") && level.getLevel() == 1) || level.getLevel() == 3) {
                                         this.server.sendReply(reply);
                                     }
                                 }
@@ -215,8 +216,8 @@ public class ClientLogged implements Closeable {
     public final void sendMessage (final Message message, final int delay, final BiConsumer<Reply, Boolean> consumer) {
         if (!this.isClientEnabled) return;
 
-        message.idRequest = this.server.random.nextLong();
-        this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, consumer);
+        message.setIdRequest(this.server.random.nextLong());
+        this.server.getCatcherManager().addReplyEvent(message.getIdRequest(), delay, consumer);
 
         try {
             this.sender.writeObject(message);
@@ -243,8 +244,8 @@ public class ClientLogged implements Closeable {
         final Message message = new Message();
         messageConsumer.accept(message);
 
-        message.idRequest = this.server.random.nextLong();
-        this.server.getCatcherManager().addReplyEvent(message.idRequest, delay, eventConsumer);
+        message.setIdRequest(this.server.random.nextLong());
+        this.server.getCatcherManager().addReplyEvent(message.getIdRequest(), delay, eventConsumer);
 
         try {
             this.sender.writeObject(message);
@@ -310,10 +311,10 @@ public class ClientLogged implements Closeable {
             response.code = "MAX_GLOBAL_CLIENT";
         } else {
             this.session = (Session) packet;
-            if (!blacklisted.contains(this.session.name.toLowerCase())) {
+            if (!blacklisted.contains(this.session.getName().toLowerCase())) {
                 state = this.server.getLoginManager().goodCredentials(this.session);
                 response.code = (state) ? "OK" : "INVALID";
-            } else if (this.server.getOptions().getMaxSameClient() < this.server.getUserManager().getUserCount(session.name)) {
+            } else if (this.server.getOptions().getMaxSameClient() < this.server.getUserManager().getUserCount(session.getName())) {
                 state = false;
                 response.code = "MAX_SAME_CLIENT";
             } else {

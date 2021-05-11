@@ -1,6 +1,6 @@
 package fr.i360matt.sokeese.client;
 
-import fr.i360matt.sokeese.commons.Session;
+import fr.i360matt.sokeese.commons.requests.Session;
 import fr.i360matt.sokeese.commons.events.ActionEvent;
 import fr.i360matt.sokeese.commons.events.MessageEvent;
 import fr.i360matt.sokeese.commons.modules.CatcherManager;
@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  * The server must be of the same type and version as the client.
  *
  * @author 360matt
- * @version 1.2.0
+ * @version 1.3.0
  */
 public class SokeeseClient implements Closeable {
 
@@ -162,19 +162,19 @@ public class SokeeseClient implements Closeable {
         final AuthResponse authRes = (AuthResponse) res;
         switch (authRes.code) {
             case "OK":
-                System.out.println(prefix + " Logged as '" + this.session.name + "'");
+                System.out.println(prefix + " Logged as '" + this.session.getName() + "'");
                 return true;
             case "INVALID":
-                System.err.println(prefix + " Invalid credential for '" + this.session.name + "'");
+                System.err.println(prefix + " Invalid credential for '" + this.session.getName() + "'");
                 return false;
             case "MAX_GLOBAL_CLIENT":
-                System.err.println(prefix + " Server can't accept other connection just now (MAX_GLOBAL_CLIENT) for '" + this.session.name + "'");
+                System.err.println(prefix + " Server can't accept other connection just now (MAX_GLOBAL_CLIENT) for '" + this.session.getName() + "'");
                 return false;
             case "MAX_SAME_CLIENT":
-                System.err.println(prefix + " Max clients connected with same name '" + this.session.name + "'");
+                System.err.println(prefix + " Max clients connected with same name '" + this.session.getName() + "'");
                 return false;
             default:
-                System.err.println(prefix + " Internal error in login phase for '" + this.session.name + "'");
+                System.err.println(prefix + " Internal error in login phase for '" + this.session.getName() + "'");
                 return false;
         }
     }
@@ -250,9 +250,7 @@ public class SokeeseClient implements Closeable {
      *
      * @param obj The request which must be of the Message or Action type.
      *
-     * @see Message
      * @see Action
-     * @see Reply
      */
     public final void sendAction (final Action obj) {
         if (!this.isEnabled) return;
@@ -303,9 +301,9 @@ public class SokeeseClient implements Closeable {
             final Message message = new Message();
             msgConsumer.accept(message);
 
-            message.idRequest = random.nextLong();
+            message.setIdRequest(random.nextLong());
 
-            this.catcherManager.addReplyEvent(message.idRequest, delay, eventConsumer);
+            this.catcherManager.addReplyEvent(message.getIdRequest(), delay, eventConsumer);
             // we save the reply-event
 
             this.sender.writeObject(message);
@@ -330,9 +328,9 @@ public class SokeeseClient implements Closeable {
     public final void sendMessage (final Message message, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
         if (!this.isEnabled) return;
         try {
-            message.idRequest = random.nextLong();
+            message.setIdRequest(random.nextLong());
 
-            this.catcherManager.addReplyEvent(message.idRequest, delay, eventConsumer);
+            this.catcherManager.addReplyEvent(message.getIdRequest(), delay, eventConsumer);
             // we save the reply-event
 
             this.sender.writeObject(message);
@@ -354,8 +352,6 @@ public class SokeeseClient implements Closeable {
      * @param eventConsumer The callback defined by the developer.
      *
      * @see Message
-     * @see Action
-     * @see Reply
      */
     public final void sendMessage (final Consumer<Message> msgConsumer, final BiConsumer<Reply, Boolean> eventConsumer) {
         this.sendMessage(msgConsumer, 200, eventConsumer);

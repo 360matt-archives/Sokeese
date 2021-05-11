@@ -27,9 +27,12 @@ import java.util.function.Consumer;
  * The server must be of the same type and version as the client.
  *
  * @author 360matt
- * @version 1.3.0
+ * @version 1.4.0
  */
 public class SokeeseClient implements Closeable {
+
+    private final Object syncIn = new Object(); // instance object for synchronise:
+    private final Object syncOut = new Object(); // must be different out != in
 
     private final CatcherManager.CLIENT catcherManager;
     private final ClientOptions options;
@@ -110,7 +113,12 @@ public class SokeeseClient implements Closeable {
 
                             while (this.isEnabled) { // until close() is called or readObject() have throw an error
                                 try {
-                                    final Object obj = this.receiver.readObject(); // produces an error if class not found or if socket closed
+
+                                    final Object obj;
+                                    synchronized (this.syncIn) {
+                                        obj = this.receiver.readObject(); // produces an error if class not found or if socket closed
+                                    }
+
                                     if (obj instanceof Message)
                                         this.catcherManager.handleMessage(this, (Message) obj);
                                     else if (obj instanceof Action)
@@ -120,7 +128,10 @@ public class SokeeseClient implements Closeable {
                                 } catch (final ClassNotFoundException ignored) { }
                             }
                         }
-                    } catch (final IOException ignored) { } // if close() is called, an error will be raised because of readObject()
+                    } catch (final IOException e) {
+                        if (this.options.getDebug())
+                            e.printStackTrace();
+                    } // if close() is called, an error will be raised because of readObject()
                     finally {
                         if (this.isAvailable)
                             System.out.println(this.prefix + " Disconnected");
@@ -133,7 +144,10 @@ public class SokeeseClient implements Closeable {
                         break;
                     }
                 }
-            } catch (final Exception ignored) { }
+            } catch (final Exception e) {
+                if (this.options.getDebug())
+                    e.printStackTrace();
+            }
             finally {
                 this.catcherManager.close();
                 future.complete(null); // and we can free the constructor
@@ -150,10 +164,14 @@ public class SokeeseClient implements Closeable {
      * @return if the connection is accepted by the server
      */
     private boolean waitLoginValidation () throws IOException, ClassNotFoundException {
-        this.sender.writeObject(session);
-        this.sender.flush();
+        final Object res;
+        synchronized (this.syncOut) {
+            this.sender.writeObject(session);
+            this.sender.flush();
 
-        final Object res = this.receiver.readObject();
+            res = this.receiver.readObject();
+        }
+
         if (!(res instanceof AuthResponse)) {
             System.err.println(prefix + "Internal error in login phase");
             return false;
@@ -195,10 +213,14 @@ public class SokeeseClient implements Closeable {
         consumer.accept(obj);
 
         try {
-            this.sender.writeObject(obj);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             // e.printStackTrace();
+            if (this.options.getDebug())
+                e.printStackTrace();
         }
     }
 
@@ -217,10 +239,14 @@ public class SokeeseClient implements Closeable {
         consumer.accept(obj);
 
         try {
-            this.sender.writeObject(obj);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             // e.printStackTrace();
+            if (this.options.getDebug())
+                e.printStackTrace();
         }
     }
 
@@ -237,10 +263,14 @@ public class SokeeseClient implements Closeable {
     public final void sendMessage (final Message obj) {
         if (!this.isEnabled) return;
         try {
-            this.sender.writeObject(obj);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             // e.printStackTrace();
+            if (this.options.getDebug())
+                e.printStackTrace();
         }
     }
 
@@ -255,10 +285,14 @@ public class SokeeseClient implements Closeable {
     public final void sendAction (final Action obj) {
         if (!this.isEnabled) return;
         try {
-            this.sender.writeObject(obj);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             // e.printStackTrace();
+            if (this.options.getDebug())
+                e.printStackTrace();
         }
     }
 
@@ -273,10 +307,14 @@ public class SokeeseClient implements Closeable {
     public void sendReply (final Reply obj) {
         if (!this.isEnabled) return;
         try {
-            this.sender.writeObject(obj);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(obj);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             // e.printStackTrace();
+            if (this.options.getDebug())
+                e.printStackTrace();
         }
     }
 
@@ -306,10 +344,15 @@ public class SokeeseClient implements Closeable {
             this.catcherManager.addReplyEvent(message.getIdRequest(), delay, eventConsumer);
             // we save the reply-event
 
-            this.sender.writeObject(message);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
 
-        } catch (final IOException ignored) { }
+        } catch (final IOException e) {
+            if (this.options.getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -333,10 +376,15 @@ public class SokeeseClient implements Closeable {
             this.catcherManager.addReplyEvent(message.getIdRequest(), delay, eventConsumer);
             // we save the reply-event
 
-            this.sender.writeObject(message);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
 
-        } catch (final IOException ignored) { }
+        } catch (final IOException e) {
+            if (this.options.getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -424,7 +472,10 @@ public class SokeeseClient implements Closeable {
         this.isEnabled = false;
         try {
             this.socket.close();
-        } catch (final IOException ignored) { }
+        } catch (final IOException e) {
+            if (this.options.getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**

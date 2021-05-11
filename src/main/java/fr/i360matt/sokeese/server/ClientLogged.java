@@ -23,11 +23,14 @@ import java.util.function.Consumer;
  * Each session will have its own instance of this class.
  *
  * @author 360matt
- * @version 1.3.0
+ * @version 1.4.0
  *
  * @see SokeeseServer
  */
 public class ClientLogged implements Closeable {
+    protected final Object syncIn = new Object(); // instance object for synchronise:
+    protected final Object syncOut = new Object(); // must be different out != in
+
     private boolean isClientEnabled = false;
 
     protected ObjectOutputStream sender;
@@ -74,7 +77,10 @@ public class ClientLogged implements Closeable {
                         // can now listen every packets
 
                         try {
-                            final Object obj = this.receiver.readObject(); // receive object over socket
+                            final Object obj;
+                            synchronized (this.syncIn) {
+                                obj = this.receiver.readObject(); // receive object over socket
+                            }
 
                             if (obj instanceof Action)
                                 this.server.getCatcherManager().handleAction((Action) obj, this);
@@ -107,17 +113,26 @@ public class ClientLogged implements Closeable {
                                     }
                                 }
                             }
-                        } catch (final ClassNotFoundException ignored) { }
+                        } catch (final ClassNotFoundException e) {
+                            if (this.server.getOptions().getDebug())
+                                e.printStackTrace();
+                        }
                     }
                 }
-            } catch (final IOException | ClassNotFoundException ignored) { }
+            } catch (final IOException | ClassNotFoundException e) {
+                if (this.server.getOptions().getDebug())
+                    e.printStackTrace();
+            }
             finally {
                 if (this.isClientEnabled) {
                     this.isClientEnabled = false;
                     this.server.getUserManager().removeUser(this);
                     try {
                         client.close();
-                    } catch (IOException ignored) { }
+                    } catch (IOException e) {
+                        if (this.server.getOptions().getDebug())
+                            e.printStackTrace();
+                    }
                 }
             }
         });
@@ -135,9 +150,14 @@ public class ClientLogged implements Closeable {
     public final void sendMessage (final Message message) {
         if (!this.isClientEnabled) return;
         try {
-            this.sender.writeObject(message);
-            this.sender.flush();
-        } catch (final IOException ignored) { }
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -149,9 +169,14 @@ public class ClientLogged implements Closeable {
     public final void sendAction (final Action action) {
         if (!this.isClientEnabled) return;
         try {
-            this.sender.writeObject(action);
-            this.sender.flush();
-        } catch (final IOException ignored) { }
+            synchronized (this.syncOut) {
+                this.sender.writeObject(action);
+                this.sender.flush();
+            }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -166,9 +191,14 @@ public class ClientLogged implements Closeable {
             final Message message = new Message();
             consumer.accept(message);
 
-            this.sender.writeObject(message);
-            this.sender.flush();
-        } catch (final IOException ignored) { }
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -183,9 +213,14 @@ public class ClientLogged implements Closeable {
             final Action action = new Action();
             consumer.accept(action);
 
-            this.sender.writeObject(action);
-            this.sender.flush();
-        } catch (final IOException ignored) { }
+            synchronized (this.syncOut) {
+                this.sender.writeObject(action);
+                this.sender.flush();
+            }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -197,9 +232,14 @@ public class ClientLogged implements Closeable {
     public final void sendReply (final Reply reply) {
         if (!this.isClientEnabled) return;
         try {
-            this.sender.writeObject(reply);
-            this.sender.flush();
-        } catch (final IOException ignored) { }
+            synchronized (this.syncOut) {
+                this.sender.writeObject(reply);
+                this.sender.flush();
+            }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**
@@ -220,8 +260,10 @@ public class ClientLogged implements Closeable {
         this.server.getCatcherManager().addReplyEvent(message.getIdRequest(), delay, consumer);
 
         try {
-            this.sender.writeObject(message);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             e.printStackTrace();
         }
@@ -248,8 +290,10 @@ public class ClientLogged implements Closeable {
         this.server.getCatcherManager().addReplyEvent(message.getIdRequest(), delay, eventConsumer);
 
         try {
-            this.sender.writeObject(message);
-            this.sender.flush();
+            synchronized (this.syncOut) {
+                this.sender.writeObject(message);
+                this.sender.flush();
+            }
         } catch (final IOException e) {
             e.printStackTrace();
         }
@@ -298,7 +342,11 @@ public class ClientLogged implements Closeable {
 
         boolean state;
 
-        final Object packet = receiver.readObject();
+        final Object packet;
+        synchronized (this.syncIn) {
+            packet = receiver.readObject();
+        }
+
         if (!(packet instanceof Session)) {
             // if isn't the good object type for login
 
@@ -323,8 +371,11 @@ public class ClientLogged implements Closeable {
             }
         }
 
-        sender.writeObject(response);
-        sender.flush();
+        synchronized (this.syncOut) {
+            sender.writeObject(response);
+            sender.flush();
+        }
+
         return state;
     }
 
@@ -345,7 +396,10 @@ public class ClientLogged implements Closeable {
         this.isClientEnabled = false;
         try {
             this.socket.close();
-        } catch (final IOException ignored) { }
+        } catch (final IOException e) {
+            if (this.server.getOptions().getDebug())
+                e.printStackTrace();
+        }
     }
 
     /**

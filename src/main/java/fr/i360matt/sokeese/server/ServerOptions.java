@@ -3,7 +3,7 @@ package fr.i360matt.sokeese.server;
 /**
  * Allows to modificate the server behavor
  *
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class ServerOptions {
 
@@ -31,6 +31,8 @@ public class ServerOptions {
     protected int maxSameClient = 10;
     /*  protected int maxClientsPerGroup = 50; */
 
+    protected boolean debug = false;
+
 
     public final void setLevelMessages (final Level levelMessages) {
         this.levelMessages = levelMessages;
@@ -44,6 +46,9 @@ public class ServerOptions {
     /*  public final void setMaxClientsPerGroup (final int maxClientsPerGroup) {
         this.maxClientsPerGroup = maxClientsPerGroup;
     } */
+    public final void setDebug (final boolean debug) {
+        this.debug = debug;
+    }
 
     public final Level getLevelMessages () {
         return this.levelMessages;
@@ -57,4 +62,7 @@ public class ServerOptions {
     /* public final int getMaxClientsPerGroup () {
         return maxClientsPerGroup;
     } */
+    public final boolean getDebug () {
+        return this.debug;
+    }
 }

@@ -12,9 +12,7 @@ public class Tests {
         final SokeeseServer server = new SokeeseServer(25565, "key", serverOptions);
 
 
-
-
-        server.onMessage("none", (event, client) -> {
+        server.onMessage("hello", (event, client) -> {
             event.reply("truc");
         });
 

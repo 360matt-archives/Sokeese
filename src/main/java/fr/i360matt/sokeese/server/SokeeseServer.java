@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -24,19 +25,18 @@ import java.util.function.Consumer;
  * The client must be of the same type and version as the server.
  *
  * @author 360matt
- * @version 1.2.0
+ * @version 1.3.0
  */
 public class SokeeseServer implements Closeable {
 
-    private final LoginManager loginManager;
-    private final CatcherManager.SERVER catcherManager;
-    private final ServerOptions options;
-
     private boolean isEnabled = true;
 
+    private final LoginManager loginManager;
+    private final CatcherManager.SERVER catcherManager;
     private final UserManager userManager = new UserManager();
 
     private ServerSocket server;
+    private final ServerOptions options;
 
     protected final Random random = new Random();
 
@@ -62,23 +62,33 @@ public class SokeeseServer implements Closeable {
         this.catcherManager = new CatcherManager.SERVER();
         this.options = options;
 
+        final CompletableFuture<Void> future = new CompletableFuture<>();
+
         final ExecutorService service = Executors.newSingleThreadExecutor();
         service.execute(() -> {
             try (final ServerSocket server = new ServerSocket(port)) {
                 this.server = server;
+
+                future.complete(null);
 
                 while (this.isEnabled && !server.isClosed()) {
                     final Socket socket = server.accept();
                     socket.setSoTimeout(1000); // timeout 1 seconds while login
                     new ClientLogged(this, socket);
                 }
-            } catch (final Exception ignored) { }
+            } catch (final Exception e) {
+                if (this.getOptions().getDebug())
+                    e.printStackTrace();
+            }
             finally {
+                future.complete(null);
                 this.catcherManager.close();
                 this.userManager.close();
             }
         });
         service.shutdown();
+
+        future.join();
     }
 
     /**
@@ -99,15 +109,19 @@ public class SokeeseServer implements Closeable {
         final ServerOptions.Level level = this.getOptions().getLevelMessages();
         if (recipient.equalsIgnoreCase("all") && level.getLevel() == 3) {
             // send to every clients
-            for (final ClientLogged users : this.getUserManager().getAllUsers()) {
-                users.sender.writeObject(obj);
-                users.sender.flush();
+            for (final ClientLogged user : this.getUserManager().getAllUsers()) {
+                synchronized (user.syncOut) {
+                    user.sender.writeObject(obj);
+                    user.sender.flush();
+                }
             }
         } else if (level.getLevel() == 1 && !recipient.equalsIgnoreCase("server")) {
             // send to unique client (or multiple terminals with the same name)
-            for (final ClientLogged users : this.getUserManager().getUser(recipient)) {
-                users.sender.writeObject(obj);
-                users.sender.flush();
+            for (final ClientLogged user : this.getUserManager().getUser(recipient)) {
+                synchronized (user.syncOut) {
+                    user.sender.writeObject(obj);
+                    user.sender.flush();
+                }
             }
         }
     }
@@ -261,7 +275,10 @@ public class SokeeseServer implements Closeable {
         this.isEnabled = false;
         try {
             this.server.close();
-        } catch (final Exception ignored) { }
+        } catch (final Exception e) {
+            if (this.getOptions().getDebug())
+                e.printStackTrace();
+        }
 
     }
 

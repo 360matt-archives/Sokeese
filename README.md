@@ -44,6 +44,65 @@ You can also allow a number of clients with the same username (so yes, you can c
 If any of the thresholds are met, the connection is simply reset after sending the error message to the client.  
 
 
+## Requests body:
+### Action request:
+Action requests allow the simple exchange between the client and the server, without response support, it does not contain a header.  
+This is the most minimalist request.
+```java
+final Action action = new Action();
+// we create a Action instance (or use existant in lambda ...)
+
+action.setName("hello"); // the name of the action.
+action.setContent(new Object()); // can send all serializable object (must be the same class at other side)
+
+// permet to define the map, add values in lambda, and set the content
+action.setMap(map0 -> {
+    map0.put("test", "hello world");
+});
+
+
+String name = action.getName();
+Object content = action.getContent();
+
+Map<?, ?> map = action.getMap();
+Map<Vector<?>, Arrays> map_wtf = action.getMap(); // we can get as all types
+
+// permit to get map values in a lambda
+action.getMap(map3 -> {
+
+});
+```
+### Message request:
+Message requests are the most complete and sophisticated, they contain headers such as sender and recipient,  
+as well as a request id which makes the response / callback service possible
+```java
+final Message message = new Message();
+// we create a Message instance (or use existant in lambda ...)
+
+message.setChannel("hello"); // the name of the channel.
+message.setRecipient("Mr. Krabks"); // choose the client recipient ("server" to send to the server)
+message.setContent(new Object()); // can send all serializable object (must be the same class at other side)
+
+// permet to define the map, add values in lambda, and set the content
+message.setMap(map0 -> {
+    map0.put("test", "hello world");
+});
+
+
+String channel = message.getChannel();
+String recipient = message.getRecipient();
+Object content = message.getContent();
+
+Map<?, ?> map = message.getMap();
+Map<Vector<?>, Arrays> map_wtf = message.getMap(); // we can get as all types
+
+// permit to get map values in a lambda
+message.getMap(map3 -> {
+
+});
+```
+
+
 ## Create a server
 To start a Sokeese server, it's quite simple:
 ```java
@@ -59,6 +118,29 @@ final SokeeseServer server = new SokeeseServer( int port, String privateKey, [Se
 
 final ServerOptions options2 = server.getOptions();
 // You can [re]change all options after starting the server by getting the ServerOptions instance.
+
+
+/**
+* For the following request-sending methods, the server cannot take advantage of the root-level response system.
+* You must send the request from an instance of ClienLogged
+**/
+
+
+
+server.sendMessage( Message );
+// The API will send this request to the client concerned using the "recipient" field
+
+server.sendAction("recipient", Action );
+// As Action requests do not have a header, we must in this case inform the container in the method
+
+
+server.sendMessage(Message -> {
+    // define the request here
+});
+
+server.sendAction("recipient", (Action) -> {
+    // define the request here
+}));
 
 
 server.close();

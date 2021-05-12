@@ -31,10 +31,167 @@ You can easily open the server port to the internet if your use requires it,
 You will not have to worry about the authentication system.
 
 ### Response / Callback system:
-(will come)
+When a client receives a Message request, it can return a response to that request using the request id it contains in the header (the ``reply(...)`` methods will do the job for you).
+
+On the other side, from the sender, once the request has been sent, he can wait for an asynchronous response specific to this request, with a temporary single-use biconsumer event.
 
 
-(will come)
-(will come)
-(will come)
-Be patient
+### Limit
+You can easily limit the number of clients allowed to connect simultaneously  
+You can also allow a number of clients with the same username (so yes, you can connect clients with the same username logged in)  
+
+
+If any of the thresholds are met, the connection is simply reset after sending the error message to the client.  
+
+
+## Create a server
+To start a Sokeese server, it's quite simple:
+```java
+final ServerOptions serverOptions = new ServerOptions();
+serverOptions.setMaxClients(int default 50); // only 10 clients accepted simultaneous
+serverOptions.setDebug(boolean default false); // permit to print all exceptions
+serverOptions.setMaxSameClient(int default 10); // if clients can have the same username in multiple sessions
+serverOptions.setLevelMessages(ServerOptions.Level default SINGLE); // if clients can send Message requests to others clients
+
+
+final SokeeseServer server = new SokeeseServer( int port, String privateKey, [ServerOptions options] );
+// server options is optionnal
+
+final ServerOptions options2 = server.getOptions();
+// You can [re]change all options after starting the server by getting the ServerOptions instance.
+
+
+server.close();
+// permit to close the server.
+
+boolean state = server.isClosed();
+// get the current state of the server
+```  
+  
+Now, we will learn how to harness the potential of the API methods of the server:  
+
+### User Manager
+The user manager makes it possible to recover the desired user instances and to be able to disconnect them
+```java
+final UserManager usrMan = server.getUserManager();
+
+int clientCount = usrMan.getUserCount("a name");
+// how many client under this name are connected
+
+int globalCount = usrMan.getCount();
+// the number of connected clients
+
+final Set<ClientLogged> clients = usrMan.getUser("hello");
+// get all instances of clients that have this name, can be null.
+
+final boolean exist = usrMan.exist("bonjour");
+// if at least one client is logged in under this name
+
+usrMan.disconnect("hey");
+// disconnect all clients that have this name
+
+usrMan.disconnectAll();
+// disconnect all clients
+
+final Set<ClientLogged> allClients = usrMan.getAllUsers();
+// get all connected clients
+```
+
+### Login manager
+Allows you to generate a token from a provided Session instance
+```java
+final LoginManager loginMan = server.getLoginManager();
+
+String token = loginMan.getTokenRelated(Session session);
+```
+
+### Registering events
+Great novelty for this API: the server can now process requests in addition to redistributing them  
+
+#### For Action event:
+```java
+
+server.onAction("action name", (event, client) -> {
+    Map<K, V> map = event.getMap();
+    // convert the Action#content as Map type
+
+    // or
+    event.getMap(mapLambda -> {
+      // do stuff with map in lambda
+    });
+
+
+    event.getName();
+    // = "action name" for example
+    
+    event.getContent();
+    // get content of the request
+
+    Action action = event.getRequest();
+    // the raw Action request received
+
+    event.send( Action );
+    // send a Action request to the client
+
+    event.send( Message );
+    // send a Message request to the client
+
+    event.sendAction(Action -> {
+      x.setName("test");
+      x.setContent("the content");
+      // the server will send x
+    });
+
+    event.sendMessage(Message -> {
+      x.setChannel("the channel for the listener");
+      x.setSender("server"); // only server can overwrite the sender
+      x.setContent(new Object()); // can be all types, must be Serializable and same class other side
+      // the server will x 
+    });
+});
+```
+
+#### For Message request:
+```java
+server.onMessage("channel name", (event, client) -> {
+    Map<K, V> map = event.getMap();
+    // convert the Action#content as Map type
+
+    // or
+    event.getMap(mapLambda -> {
+      // do stuff with map in lambda
+    });
+
+
+    event.getChannel();
+    // retrieve the channel name
+    
+    event.getSender();
+    // retrieve the sender name
+    
+    event.getContent();
+    // retrieve the content of request
+
+    Action action = event.getRequest();
+    // the raw Message request received
+
+    event.sendMessage( Action );
+    // send a Action request to the client
+
+    event.sendAction( Message );
+    // send a Message request to the client
+
+    event.sendAction(Action -> {
+      x.setName("test");
+      x.setContent("the content");
+      // the server will send x
+    });
+
+    event.sendMessage(Message -> {
+      x.setChannel("the channel for the listener");
+      x.setSender("server"); // only server can overwrite the sender
+      x.setContent(new Object()); // can be all types, must be Serializable and same class other side
+      // the server will x
+    });
+});
+```

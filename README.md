@@ -44,7 +44,7 @@ You can also allow a number of clients with the same username (so yes, you can c
 If any of the thresholds are met, the connection is simply reset after sending the error message to the client.  
 
 
-## Requests body:
+## ⭐ Requests body:
 ### Action request:
 Action requests allow the simple exchange between the client and the server, without response support, it does not contain a header.  
 This is the most minimalist request.
@@ -103,7 +103,7 @@ message.getMap(map3 -> {
 ```
 
 
-## Create a server
+## ➕ Create a server
 To start a Sokeese server, it's quite simple:
 ```java
 final ServerOptions serverOptions = new ServerOptions();
@@ -308,7 +308,7 @@ Session session = client.getSession();
 client.close();
 // disconnect the client and close the instance, eliminate it in GC
 ```
-## create and connect a Client
+## ➕ Create and connect a Client
 To connect a Sokeese client, it's quite simple:
 ```java
 

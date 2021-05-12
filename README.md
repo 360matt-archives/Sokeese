@@ -257,10 +257,10 @@ server.onMessage("channel name", (event, client) -> {
     Action action = event.getRequest();
     // the raw Message request received
 
-    event.sendMessage( Action );
+    event.sendAction( Action );
     // send a Action request to the client
 
-    event.sendAction( Message );
+    event.sendMessage( Message );
     // send a Message request to the client
 
     event.sendAction(Action -> {
@@ -307,4 +307,148 @@ Session session = client.getSession();
 
 client.close();
 // disconnect the client and close the instance, eliminate it in GC
+```
+## create and connect a Client
+To connect a Sokeese client, it's quite simple:
+```java
+
+final ClientOptions options = new ClientOptions(); // optionnal
+options.setDebug(boolean default false); // print exceptions
+options.setRetryDelay(int default 100); // if disconnect or error: retry reconnect after x ms
+options.setMaxRetry(int default 20); // retry x times
+
+final SokeeseClient client = new SokeeseClient( String host , int port, Session session, [ClientOptions options] );
+
+
+boolean state = client.isOpen();
+boolean state2 = client.isClosed();
+
+
+
+
+client.sendMessage( Message ); // send a Message request
+
+client.sendAction( Action ); // send a Action request
+
+client.sendAction(Action -> {
+    x.setName("test");
+    x.setContent("the content");
+    // the server will send x
+});
+
+client.sendMessage(Message -> {
+    x.setChannel("the channel for the listener");
+    x.setSender("server"); // only server can overwrite the sender
+    x.setContent(new Object()); // can be all types, must be Serializable and same class other side
+    // the server will x 
+});
+
+
+// send a Message request, and catch the response in a async BiConsumer
+// default delay: 200ms
+client.sendMessage( Message, ((Reply reply, Boolean isTimeout) -> {
+
+}));
+
+// choose custom delay
+client.sendMessage( Message, 10, ((Reply reply, Boolean isTimeout) -> {
+
+}));
+
+
+
+
+
+client.close();
+// disconnect the client and remove, eliminate it in GC
+
+```
+### Registering events
+The client can also listen to the requests he receives on certain channels  
+#### For Action event:
+```java
+client.onAction("action name", (event) -> {
+    Map<K, V> map = event.getMap();
+    // convert the Action#content as Map type
+
+    // or
+    event.getMap(mapLambda -> {
+        // do stuff with map in lambda
+    });
+
+
+    event.getName();
+    // = "action name" for example
+
+    event.getContent();
+    // get content of the request
+
+    Action action = event.getRequest();
+    // the raw Action request received
+
+    event.sendAction(Action);
+    // send a Action request to the client
+
+    event.sendMessage(Message);
+    // send a Message request to the client
+
+    event.sendAction(Action -> {
+        x.setName("test");
+        x.setContent("the content");
+        // the server will send x
+    });
+
+    event.sendMessage(Message -> {
+        x.setChannel("the channel for the listener");
+        x.setSender("server"); // only server can overwrite the sender
+        x.setContent(new Object()); // can be all types, must be Serializable and same class other side
+        // the server will x 
+    });
+
+});
+```
+
+#### For Message request:
+```java
+client.onMessage("channel name", (event) -> {
+    Map<K, V> map = event.getMap();
+    // convert the Action#content as Map type
+
+    // or
+    event.getMap(mapLambda -> {
+        // do stuff with map in lambda
+    });
+
+
+    event.getChannel();
+    // retrieve the channel name
+
+    event.getSender();
+    // retrieve the sender name
+
+    event.getContent();
+    // retrieve the content of request
+
+    Message message = event.getRequest();
+    // the raw Message request received
+
+    event.sendMessage( Action );
+    // send a Action request to the client
+
+    event.sendAction( Message );
+    // send a Message request to the client
+
+    event.sendAction(Action -> {
+        x.setName("test");
+        x.setContent("the content");
+        // the server will send x
+    });
+
+    event.sendMessage(Message -> {
+        x.setChannel("the channel for the listener");
+        x.setSender("server"); // only server can overwrite the sender
+        x.setContent(new Object()); // can be all types, must be Serializable and same class other side
+        // the server will x
+    });
+});
 ```

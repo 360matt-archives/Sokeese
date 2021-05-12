@@ -79,6 +79,14 @@ public final class ActionEvent {
         }
 
         /**
+         * Shortcut used to retrieve the content of the action
+         * @return The content of action.
+         */
+        public final Object getContent () {
+            return action.getContent();
+        }
+
+        /**
          * Allows to retrieve the content of the request as Map.
          * If the content is not of this type, an empty Map will be returned.
          *
@@ -124,7 +132,7 @@ public final class ActionEvent {
          * Serves as a shortcut to send a 'Message' request to the server faster.
          * @param message A 'MESSAGE' request.
          */
-        public final void send (final Message message) {
+        public final void sendMessage (final Message message) {
             this.instance.sendMessage(message);
         }
 
@@ -140,7 +148,7 @@ public final class ActionEvent {
          * Serves as a shortcut to send a 'ACTION' request to the server faster.
          * @param action A 'ACTION' request.
          */
-        public final void send (final Action action) {
+        public final void sendAction (final Action action) {
             this.instance.sendAction(action);
         }
 
@@ -158,6 +166,14 @@ public final class ActionEvent {
          */
         public final String getName () {
             return action.getName();
+        }
+
+        /**
+         * Shortcut used to retrieve the content of the action
+         * @return The content of action.
+         */
+        public final Object getContent () {
+            return action.getContent();
         }
 
         /**

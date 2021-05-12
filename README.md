@@ -9,7 +9,7 @@ This rich and varied library will greatly facilitate development, it is very lig
 * Possible to limit the number of simultaneously connected clients
 * Header on Message requests.
 
-### Authentication module:
+### 🔒 Authentication module:
 Customers log in by presenting their username, group and token.   
   
 Each client's token is never stored, yet authentication works even after a server restart, how do you think it is?  
@@ -20,23 +20,23 @@ but also at each connection to compare the tokens and thus authorize the connect
 
 If you want to "create" accounts automatically, just use this equation wherever you want.
 
-### Autorization Mode system:
+### 🔑 Autorization Mode system:
 In the server options you will have the choice between:
 * ALL (each client can send a Message request to all clients at once without specifying their name)
 * SINGLE (each customer will have to know the name of the customers to whom he wants to send, he will have to send them one by one if there are several)
 * NOTHING (no exchanges will be allowed, for all customers without exceptions)
 
-### Open to the internet:
+### 😈 Open to the internet:
 You can easily open the server port to the internet if your use requires it,  
 You will not have to worry about the authentication system.
 
-### Response / Callback system:
+### 💣 Response / Callback system:
 When a client receives a Message request, it can return a response to that request using the request id it contains in the header (the ``reply(...)`` methods will do the job for you).
 
 On the other side, from the sender, once the request has been sent, he can wait for an asynchronous response specific to this request, with a temporary single-use biconsumer event.
 
 
-### Limit
+### 💤 Limit
 You can easily limit the number of clients allowed to connect simultaneously  
 You can also allow a number of clients with the same username (so yes, you can connect clients with the same username logged in)  
 
@@ -152,7 +152,7 @@ boolean state = server.isClosed();
   
 Now, we will learn how to harness the potential of the API methods of the server:  
 
-### User Manager
+### 👻 User Manager
 The user manager makes it possible to recover the desired user instances and to be able to disconnect them
 ```java
 final UserManager usrMan = server.getUserManager();
@@ -179,7 +179,7 @@ final Set<ClientLogged> allClients = usrMan.getAllUsers();
 // get all connected clients
 ```
 
-### Login manager
+### 👀 Login manager
 Allows you to generate a token from a provided Session instance
 ```java
 final LoginManager loginMan = server.getLoginManager();
@@ -187,7 +187,7 @@ final LoginManager loginMan = server.getLoginManager();
 String token = loginMan.getTokenRelated(Session session);
 ```
 
-### Registering events
+### 🔥 Registering events
 Great novelty for this API: the server can now process requests in addition to redistributing them  
 
 #### For Action event:
@@ -277,7 +277,7 @@ server.onMessage("channel name", (event, client) -> {
     });
 });
 ```
-### What to do with a ClientLogged ?
+### ❔ What to do with a ClientLogged ?
 An instance of this class represents a client session.  
 If multiple clients are connected with the same name, they each have a dedicated instance.
 ```java
@@ -363,7 +363,7 @@ client.close();
 // disconnect the client and remove, eliminate it in GC
 
 ```
-### Registering events
+### 🔥 Registering events
 The client can also listen to the requests he receives on certain channels  
 #### For Action event:
 ```java

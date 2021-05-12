@@ -293,12 +293,12 @@ client.sendMessage((Message message) -> {
 });
 
 // catch a reply while 200ms (default)
-client.sendMessage(new Message(), (Reply reply, Boolean isTimeout) -> {
+client.sendMessage(new Message(), (Reply reply, Boolean isNotTimeout) -> {
     // reply is the request reply received
 });
 
 // with delay: in example: 50ms
-client.sendMessage(new Message(), 50, (Reply reply, Boolean isTimeout) -> {
+client.sendMessage(new Message(), 50, (Reply reply, Boolean isNotTimeout) -> {
     // reply is the request reply received
 });
 
@@ -346,12 +346,12 @@ client.sendMessage(Message -> {
 
 // send a Message request, and catch the response in a async BiConsumer
 // default delay: 200ms
-client.sendMessage( Message, ((Reply reply, Boolean isTimeout) -> {
+client.sendMessage( Message, ((Reply reply, Boolean isNotTimeout) -> {
 
 }));
 
 // choose custom delay
-client.sendMessage( Message, 10, ((Reply reply, Boolean isTimeout) -> {
+client.sendMessage( Message, 10, ((Reply reply, Boolean isNotTimeout) -> {
 
 }));
 

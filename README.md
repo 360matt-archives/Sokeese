@@ -277,3 +277,34 @@ server.onMessage("channel name", (event, client) -> {
     });
 });
 ```
+### What to do with a ClientLogged ?
+An instance of this class represents a client session.  
+If multiple clients are connected with the same name, they each have a dedicated instance.
+```java
+client.sendMessage( Message );
+client.sendAction( Action );
+
+client.sendAction((Action action) -> {
+
+});
+
+client.sendMessage((Message message) -> {
+
+});
+
+// catch a reply while 200ms (default)
+client.sendMessage(new Message(), (Reply reply, Boolean isTimeout) -> {
+    // reply is the request reply received
+});
+
+// with delay: in example: 50ms
+client.sendMessage(new Message(), 50, (Reply reply, Boolean isTimeout) -> {
+    // reply is the request reply received
+});
+
+Session session = client.getSession();
+// the exact session sent from the client at login phase.
+
+client.close();
+// disconnect the client and close the instance, eliminate it in GC
+```

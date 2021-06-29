@@ -23,7 +23,7 @@ If you want to "create" accounts automatically, just use this equation wherever 
 ### 🔑 Autorization Mode system:
 In the server options you will have the choice between:
 * ALL (each client can send a Message request to all clients at once without specifying their name)
-* SINGLE (each customer will have to know the name of the customers to whom he wants to send, he will have to send them one by one if there are several)
+* SINGLE (each customer will have to know the name of the client to whom he wants to send, he will have to send them one by one if there are several)
 * NOTHING (no exchanges will be allowed, for all customers without exceptions)
 
 ### 😈 Open to the internet:

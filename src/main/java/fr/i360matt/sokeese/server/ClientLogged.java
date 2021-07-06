@@ -1,7 +1,6 @@
 package fr.i360matt.sokeese.server;
 
 
-import fr.i360matt.sokeese.commons.requests.Session;
 import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.AuthResponse;
 import fr.i360matt.sokeese.commons.requests.Message;
@@ -58,7 +57,7 @@ public class ClientLogged implements Closeable {
         service.execute(() -> {
             try (
                     final ObjectInputStream receiver = new ObjectInputStream(client.getInputStream());
-                    final ObjectOutputStream sender = new ObjectOutputStream(client.getOutputStream());
+                    final ObjectOutputStream sender = new ObjectOutputStream(client.getOutputStream())
             ) {
 
                 this.sender = sender;
@@ -129,7 +128,7 @@ public class ClientLogged implements Closeable {
                     this.server.getUserManager().removeUser(this);
                     try {
                         client.close();
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         if (this.server.getOptions().getDebug())
                             e.printStackTrace();
                     }

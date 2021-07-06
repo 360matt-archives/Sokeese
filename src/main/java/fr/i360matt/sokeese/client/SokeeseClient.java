@@ -44,7 +44,6 @@ public class SokeeseClient implements Closeable {
     private ObjectOutputStream sender;
     private ObjectInputStream receiver;
 
-    private final Session session;
     protected final String host;
     protected final int port;
 
@@ -89,8 +88,6 @@ public class SokeeseClient implements Closeable {
 
             try {
                 while (this.isEnabled) {
-                    this.isAvailable = false;
-
                     try (
                             final Socket socket = new Socket(host, port);
                             final ObjectOutputStream sender = new ObjectOutputStream(socket.getOutputStream());
@@ -109,7 +106,6 @@ public class SokeeseClient implements Closeable {
 
                             while (this.isEnabled) { // until close() is called or readObject() have throw an error
                                 try {
-
                                     final Object obj;
                                     synchronized (this.syncIn) {
                                         obj = this.receiver.readObject(); // produces an error if class not found or if socket closed
@@ -124,16 +120,18 @@ public class SokeeseClient implements Closeable {
                                 } catch (final ClassNotFoundException ignored) { }
                             }
                         }
+                        future.complete(null);
+
                     } catch (final IOException e) {
                         if (this.options.getDebug())
                             e.printStackTrace();
                     } // if close() is called, an error will be raised because of readObject()
-                    finally {
-                        if (this.isAvailable)
-                            System.out.println(this.prefix + " Disconnected");
-                        this.isAvailable = false;
-                        TimeUnit.MILLISECONDS.sleep(this.options.retryDelay);
-                    }
+
+
+                    if (this.isAvailable == 0)
+                        System.out.println(this.prefix + " Disconnected");
+                    else if (this.isAvailable == 2)
+                        this.isEnabled = false;
 
                     if (++loop == this.options.maxRetry) {
                         this.isEnabled = false;
@@ -149,7 +147,7 @@ public class SokeeseClient implements Closeable {
             }
             finally {
                 this.catcherManager.close();
-                future.complete(null); // and we can free the constructor
+              //  future.complete(null); // and we can free the constructor
             }
         });
         service.shutdown();
@@ -159,7 +157,7 @@ public class SokeeseClient implements Closeable {
 
 
     /**
-     * Allows to send the session and wait for the login to be validated
+     * Allows to send the username & password and wait for the login to be validated
      * @return if the connection is accepted by the server
      */
     private boolean login ()  {
@@ -216,7 +214,7 @@ public class SokeeseClient implements Closeable {
      * @see Message
      */
     public final void sendMessage (final Consumer<Message> consumer) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
 
         final Message obj = new Message();
         consumer.accept(obj);
@@ -242,7 +240,7 @@ public class SokeeseClient implements Closeable {
      * @see Action
      */
     public final void sendAction (final Consumer<Action> consumer) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
 
         final Action obj = new Action();
         consumer.accept(obj);
@@ -270,7 +268,7 @@ public class SokeeseClient implements Closeable {
      * @see Reply
      */
     public final void sendMessage (final Message obj) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
         try {
             synchronized (this.syncOut) {
                 this.sender.writeObject(obj);
@@ -292,7 +290,7 @@ public class SokeeseClient implements Closeable {
      * @see Action
      */
     public final void sendAction (final Action obj) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
         try {
             synchronized (this.syncOut) {
                 this.sender.writeObject(obj);
@@ -314,7 +312,7 @@ public class SokeeseClient implements Closeable {
      * @see Reply
      */
     public void sendReply (final Reply obj) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
         try {
             synchronized (this.syncOut) {
                 this.sender.writeObject(obj);
@@ -343,7 +341,7 @@ public class SokeeseClient implements Closeable {
      * @see Message
      */
     public final void sendMessage (final Consumer<Message> msgConsumer, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
         try {
             final Message message = new Message();
             msgConsumer.accept(message);
@@ -378,7 +376,7 @@ public class SokeeseClient implements Closeable {
      * @see Message
      */
     public final void sendMessage (final Message message, final int delay, final BiConsumer<Reply, Boolean> eventConsumer) {
-        if (!this.isEnabled) return;
+        if (this.isAvailable != 0) return;
         try {
             message.setIdRequest(random.nextLong());
 
@@ -443,7 +441,6 @@ public class SokeeseClient implements Closeable {
      * @see MessageEvent.CLIENT
      */
     public final void onMessage (final String channel, final Consumer<MessageEvent.CLIENT> consumer) {
-        if (!this.isEnabled) return;
         this.catcherManager.addMessageEvent(channel, consumer);
     }
 
@@ -456,7 +453,6 @@ public class SokeeseClient implements Closeable {
      * @see ActionEvent.CLIENT
      */
     public final void onAction (final String name, final Consumer<ActionEvent.CLIENT> consumer) {
-        if (!this.isEnabled) return;
         this.catcherManager.addActionEvent(name, consumer);
     }
 

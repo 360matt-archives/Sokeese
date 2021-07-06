@@ -47,7 +47,7 @@ public class ExpirableCallback<K, V> extends ConcurrentHashMap<K, V> implements 
      * @param value The content of the event.
      * @param time The deletion time.
      */
-    public final void put (final K key, final V value, int time) {
+    public final void put (final K key, final V value, final int time) {
         timeMap.put(key, System.currentTimeMillis() + time);
         super.put(key, value);
     }

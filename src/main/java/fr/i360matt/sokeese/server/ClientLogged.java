@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 /**
@@ -38,7 +39,7 @@ public class ClientLogged implements Closeable {
 
     public final SokeeseServer server;
     private final Socket socket;
-    private Session session;
+    private String name;
 
 
     /**
@@ -63,7 +64,6 @@ public class ClientLogged implements Closeable {
                 this.sender = sender;
                 this.receiver = receiver;
 
-
                 if (this.waitLogin()) { // if the login is successfull
                     client.setSoTimeout(1000 * 3600 * 6); // can now be connected for 6 hours
 
@@ -86,7 +86,7 @@ public class ClientLogged implements Closeable {
                                 this.server.getCatcherManager().handleAction((Action) obj, this);
                             else if (obj instanceof Message) {
                                 final Message message = (Message) obj;
-                                message.setSender(this.session.getName());
+                                message.setSender(this.name);
                                 // set this session name as sender name
 
                                 if (message.getRecipient().equalsIgnoreCase("server")) { // to the server
@@ -100,7 +100,7 @@ public class ClientLogged implements Closeable {
                                 }
                             } else if (obj instanceof Reply) {
                                 final Reply reply = (Reply) obj;
-                                reply.setSender(this.session.getName());
+                                reply.setSender(this.name);
                                 // set this session name as sender name
 
                                 if (reply.getRecipient().equalsIgnoreCase("server")) { // to the server
@@ -340,34 +340,30 @@ public class ClientLogged implements Closeable {
     private boolean waitLogin () throws IOException, ClassNotFoundException {
         final AuthResponse response = new AuthResponse();
 
-        boolean state;
+        final boolean state;
 
-        final Object packet;
+        final String password;
         synchronized (this.syncIn) {
-            packet = receiver.readObject();
+            this.name = receiver.readUTF();
+            password = receiver.readUTF();
         }
 
-        if (!(packet instanceof Session)) {
-            // if isn't the good object type for login
-
-            state = false;
-            response.code = "MALFORMED_PACKET";
-        } else if (this.server.getOptions().getMaxClients() <= this.server.getUserManager().getCount()) {
+        if (this.server.getOptions().getMaxClients() <= this.server.getUserManager().getCount()) {
             // if the limit of simultaneous connected clients is reached
 
             state = false;
             response.code = "MAX_GLOBAL_CLIENT";
         } else {
-            this.session = (Session) packet;
-            if (!blacklisted.contains(this.session.getName().toLowerCase())) {
-                state = this.server.getLoginManager().goodCredentials(this.session);
-                response.code = (state) ? "OK" : "INVALID";
-            } else if (this.server.getOptions().getMaxSameClient() < this.server.getUserManager().getUserCount(session.getName())) {
+            if (blacklisted.contains(this.name.toLowerCase())) {
+                state = false;
+                response.code = "FORBIDDEN";
+            } else if (this.server.getOptions().getMaxSameClient() < this.server.getUserManager().getUserCount(this.name)) {
                 state = false;
                 response.code = "MAX_SAME_CLIENT";
             } else {
-                state = false;
-                response.code = "FORBIDDEN";
+                final BiFunction<String, String, Boolean> loginManager = this.server.getLoginManager();
+                state = loginManager == null || loginManager.apply(this.name, password);
+                response.code = (state) ? "OK" : "INVALID";
             }
         }
 
@@ -380,13 +376,12 @@ public class ClientLogged implements Closeable {
     }
 
     /**
-     * Retrieves the session data that were used to connect.
+     * Retrieves the username that were used to connect.
      * @return Session data.
      *
-     * @see Session
      */
-    public final Session getSession () {
-        return this.session;
+    public final String getName () {
+        return this.name;
     }
 
     /**

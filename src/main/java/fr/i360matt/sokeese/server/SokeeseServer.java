@@ -3,7 +3,6 @@ package fr.i360matt.sokeese.server;
 import fr.i360matt.sokeese.commons.events.ActionEvent;
 import fr.i360matt.sokeese.commons.events.MessageEvent;
 import fr.i360matt.sokeese.commons.modules.CatcherManager;
-import fr.i360matt.sokeese.commons.modules.LoginManager;
 import fr.i360matt.sokeese.commons.modules.UserManager;
 import fr.i360matt.sokeese.commons.requests.Action;
 import fr.i360matt.sokeese.commons.requests.Message;
@@ -18,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 /**
@@ -31,7 +31,7 @@ public class SokeeseServer implements Closeable {
 
     private boolean isEnabled = true;
 
-    private final LoginManager loginManager;
+    private BiFunction<String, String, Boolean> loginCheckFunction;
     private final CatcherManager.SERVER catcherManager;
     private final UserManager userManager = new UserManager();
 
@@ -44,21 +44,18 @@ public class SokeeseServer implements Closeable {
      * Allows you to start the server with a port number and its secret key.
      *
      * @param port The listening port of the server.
-     * @param privateKey The secret key from which the cryptography is based.
      */
-    public SokeeseServer (final int port, final String privateKey) {
-        this(port, privateKey, new ServerOptions());
+    public SokeeseServer (final int port) {
+        this(port, new ServerOptions());
     }
 
     /**
      * Allows you to start the server with a port number and its secret key.
      *
      * @param port The listening port of the server.
-     * @param privateKey The secret key from which the cryptography is based.
      * @param options Server options
      */
-    public SokeeseServer (final int port, final String privateKey, final ServerOptions options) {
-        this.loginManager = new LoginManager(privateKey);
+    public SokeeseServer (final int port, final ServerOptions options) {
         this.catcherManager = new CatcherManager.SERVER();
         this.options = options;
 
@@ -231,13 +228,20 @@ public class SokeeseServer implements Closeable {
         this.catcherManager.addActionEvent(name, consumer);
     }
 
+    /**
+     * Allows to enable the login manager.
+     * @param loginCheckFunction The login manager.
+     */
+    public final void enableLoginManager (final BiFunction<String, String, Boolean> loginCheckFunction) {
+        this.loginCheckFunction = loginCheckFunction;
+    }
 
     /**
      * Allows to retrieve the login manager.
      * @return The login manager of the instantiated server.
      */
-    public final LoginManager getLoginManager () {
-        return this.loginManager;
+    public final BiFunction<String, String, Boolean> getLoginManager () {
+        return this.loginCheckFunction;
     }
 
     /**

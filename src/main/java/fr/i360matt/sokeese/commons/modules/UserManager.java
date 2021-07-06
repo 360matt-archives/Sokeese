@@ -30,12 +30,14 @@ public class UserManager implements Closeable {
      * @return number of user's clients are connected to the server
      */
     public final int getUserCount (final String name) {
-        if (this.single == null)
-            return 0;
-        else if (this.single.containsKey(name)) {
+        if (this.single == null) return 0;
+        if (this.single.containsKey(name)) {
             return 1;
         } else {
-            return this.multiple.get(name).size();
+            final Set<ClientLogged> cl = this.multiple.get(name);
+            if (cl != null)
+                return cl.size();
+            return 0;
         }
     }
 
@@ -47,15 +49,15 @@ public class UserManager implements Closeable {
      */
     public final void addUser (final ClientLogged client) {
         if (this.single == null) return;
-        final ClientLogged probably = this.single.get(client.getSession().getName());
+        final ClientLogged probably = this.single.get(client.getName());
         if (probably == null)
-            this.single.put(client.getSession().getName(), client);
+            this.single.put(client.getName(), client);
         else {
             final Set<ClientLogged> newList = new HashSet<>();
             newList.add(probably);
             newList.add(client);
-            this.multiple.put(client.getSession().getName(), newList);
-            this.single.remove(client.getSession().getName());
+            this.multiple.put(client.getName(), newList);
+            this.single.remove(client.getName());
         }
         this.count++;
     }
@@ -81,12 +83,12 @@ public class UserManager implements Closeable {
      */
     public final void removeUser (final ClientLogged client) {
         if (this.single == null) return;
-        if (client.getSession() != null) {
+        if (client.getName() != null) {
             if (this.single.containsValue(client)) {
-                this.single.remove(client.getSession().getName());
+                this.single.remove(client.getName());
                 this.count--;
-            } else if (multiple.containsKey(client.getSession().getName())) {
-                this.multiple.get(client.getSession().getName()).remove(client);
+            } else if (multiple.containsKey(client.getName())) {
+                this.multiple.get(client.getName()).remove(client);
                 this.count--;
             }
         }

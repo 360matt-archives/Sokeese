@@ -1,6 +1,5 @@
 package fr.i360matt.sokeese.client;
 
-import fr.i360matt.sokeese.commons.requests.Session;
 import fr.i360matt.sokeese.commons.events.ActionEvent;
 import fr.i360matt.sokeese.commons.events.MessageEvent;
 import fr.i360matt.sokeese.commons.modules.CatcherManager;
@@ -34,11 +33,12 @@ public class SokeeseClient implements Closeable {
     private final Object syncIn = new Object(); // instance object for synchronise:
     private final Object syncOut = new Object(); // must be different out != in
 
+    private final Login login;
     private final CatcherManager.CLIENT catcherManager;
     private final ClientOptions options;
 
     private boolean isEnabled = true;
-    private boolean isAvailable = false;
+    private int isAvailable = -2;
 
     private Socket socket;
     private ObjectOutputStream sender;
@@ -57,12 +57,10 @@ public class SokeeseClient implements Closeable {
      *
      * @param host Sokeese server host
      * @param port Sokeese server port
-     * @param session Cryptographic session that the connection will use
      *
-     * @see Session
      */
-    public SokeeseClient (final String host, final int port, final Session session) {
-        this(host, port, session, new ClientOptions());
+    public SokeeseClient (final String host, final int port, final Login login) {
+        this(host, port, login, new ClientOptions());
     }
 
     /**
@@ -71,15 +69,13 @@ public class SokeeseClient implements Closeable {
      *
      * @param host Sokeese server host
      * @param port Sokeese server port
-     * @param session Cryptographic session that the connection will use
      * @param options Connection options
      *
-     * @see Session
      */
-    public SokeeseClient (final String host, final int port, final Session session, final ClientOptions options) {
+    public SokeeseClient (final String host, final int port, final Login login, final ClientOptions options) {
         this.host = host;
         this.port = port;
-        this.session = session;
+        this.login = login;
         this.options = options;
         this.catcherManager = new CatcherManager.CLIENT();
 
@@ -98,18 +94,18 @@ public class SokeeseClient implements Closeable {
                     try (
                             final Socket socket = new Socket(host, port);
                             final ObjectOutputStream sender = new ObjectOutputStream(socket.getOutputStream());
-                            final ObjectInputStream receiver = new ObjectInputStream(socket.getInputStream());
+                            final ObjectInputStream receiver = new ObjectInputStream(socket.getInputStream())
                     ) {
+
+                        this.isAvailable = -2;
 
                         this.socket = socket;
                         this.sender = sender;
                         this.receiver = receiver;
 
 
-                        if (this.waitLoginValidation()) { // if the login is successfull
-                            this.isAvailable = true; // we can now send objects
-
-                            future.complete(null); // and we can free the constructor
+                        if (this.login()) {
+                            future.complete(null);
 
                             while (this.isEnabled) { // until close() is called or readObject() have throw an error
                                 try {
@@ -143,6 +139,9 @@ public class SokeeseClient implements Closeable {
                         this.isEnabled = false;
                         break;
                     }
+
+                    this.isAvailable = -2;
+                    TimeUnit.MILLISECONDS.sleep(this.options.retryDelay);
                 }
             } catch (final Exception e) {
                 if (this.options.getDebug())
@@ -163,38 +162,48 @@ public class SokeeseClient implements Closeable {
      * Allows to send the session and wait for the login to be validated
      * @return if the connection is accepted by the server
      */
-    private boolean waitLoginValidation () throws IOException, ClassNotFoundException {
-        final Object res;
-        synchronized (this.syncOut) {
-            this.sender.writeObject(session);
-            this.sender.flush();
+    private boolean login ()  {
+        try {
+            final Object res;
+            synchronized (this.syncOut) {
+                this.sender.writeUTF(this.login.username);
+                this.sender.writeUTF(this.login.password);
+                this.sender.flush();
 
-            res = this.receiver.readObject();
-        }
+                res = this.receiver.readObject();
+            }
 
-        if (!(res instanceof AuthResponse)) {
-            System.err.println(prefix + "Internal error in login phase");
-            return false;
-        }
+            if (!(res instanceof AuthResponse)) {
+                System.err.println(prefix + "Internal error in login phase");
+                this.isAvailable = 2;
+            }
 
-        final AuthResponse authRes = (AuthResponse) res;
-        switch (authRes.code) {
-            case "OK":
-                System.out.println(prefix + " Logged as '" + this.session.getName() + "'");
-                return true;
-            case "INVALID":
-                System.err.println(prefix + " Invalid credential for '" + this.session.getName() + "'");
-                return false;
-            case "MAX_GLOBAL_CLIENT":
-                System.err.println(prefix + " Server can't accept other connection just now (MAX_GLOBAL_CLIENT) for '" + this.session.getName() + "'");
-                return false;
-            case "MAX_SAME_CLIENT":
-                System.err.println(prefix + " Max clients connected with same name '" + this.session.getName() + "'");
-                return false;
-            default:
-                System.err.println(prefix + " Internal error in login phase for '" + this.session.getName() + "'");
-                return false;
+            final AuthResponse authRes = (AuthResponse) res;
+            switch (authRes.code) {
+                case "OK":
+                    System.out.println(prefix + " Logged as '" + this.login.username + "'");
+                    this.isAvailable = 0;
+                    return true;
+                case "INVALID":
+                    System.err.println(prefix + " Invalid credential for '" + this.login.username + "'");
+                    this.isAvailable = 2;
+                    break;
+                case "MAX_GLOBAL_CLIENT":
+                    System.err.println(prefix + " Server can't accept other connection just now (MAX_GLOBAL_CLIENT) for '" + this.login.username + "'");
+                    this.isAvailable = 1;
+                    break;
+                case "MAX_SAME_CLIENT":
+                    System.err.println(prefix + " Max clients connected with same name '" + this.login.username + "'");
+                    this.isAvailable = 1;
+                    break;
+                default:
+                    System.err.println(prefix + " Internal error in login phase for '" + this.login.username + "'");
+                    this.isAvailable = 1;
+            }
+        } catch (final Exception e) {
+            e.printStackTrace();
         }
+        return false;
     }
 
 

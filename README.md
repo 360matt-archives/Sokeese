@@ -2,7 +2,7 @@
 This rich and varied library will greatly facilitate development, it is very light, contains no dependencies, and offers performance almost equal to vanilla sockets
 
 ## 💙 Features:
-* Dematerialized authentication system (with cryptogtaphy)
+* Authentification system (customizable)
 * Mode system, with 3 choices of permission settings
 * Open to the internet
 * Response / callback system with delay
@@ -10,15 +10,8 @@ This rich and varied library will greatly facilitate development, it is very lig
 * Header on Message requests.
 
 ### 🔒 Authentication module:
-Customers log in by presenting their username, group and token.   
-  
-Each client's token is never stored, yet authentication works even after a server restart, how do you think it is?  
-The token is the Sha256 of the concatenation ``NAME`` + ``GROUP`` + ``SERVER PRIVATE KEY``.  
-
-The server must solve this equation with its private key to generate a token,  
-but also at each connection to compare the tokens and thus authorize the connection.  
-
-If you want to "create" accounts automatically, just use this equation wherever you want.
+Clients log in by presenting their username and password  
+Perform your username / password check using a BiFunction <String, String, Boolean>  
 
 ### 🔑 Autorization Mode system:
 In the server options you will have the choice between:
@@ -113,7 +106,7 @@ serverOptions.setMaxSameClient(int default 10); // if clients can have the same 
 serverOptions.setLevelMessages(ServerOptions.Level default SINGLE); // if clients can send Message requests to others clients
 
 
-final SokeeseServer server = new SokeeseServer( int port, String privateKey, [ServerOptions options] );
+final SokeeseServer server = new SokeeseServer( int port, [ServerOptions options] );
 // server options is optionnal
 
 final ServerOptions options2 = server.getOptions();
@@ -180,11 +173,14 @@ final Set<ClientLogged> allClients = usrMan.getAllUsers();
 ```
 
 ### 👀 Login manager
-Allows you to generate a token from a provided Session instance
+Allows you to check the password received by the server, and depending on your code to accept or not the connection.  
 ```java
-final LoginManager loginMan = server.getLoginManager();
+server.enableLoginManager((username, password) -> {
+    // do stuff (read a file, db, etc ...)
 
-String token = loginMan.getTokenRelated(Session session);
+    // and return a boolean
+    return true; 
+});
 ```
 
 ### 🔥 Registering events
@@ -302,9 +298,6 @@ client.sendMessage(new Message(), 50, (Reply reply, Boolean isNotTimeout) -> {
     // reply is the request reply received
 });
 
-Session session = client.getSession();
-// the exact session sent from the client at login phase.
-
 client.close();
 // disconnect the client and close the instance, eliminate it in GC
 ```
@@ -317,7 +310,10 @@ options.setDebug(boolean default false); // print exceptions
 options.setRetryDelay(int default 100); // if disconnect or error: retry reconnect after x ms
 options.setMaxRetry(int default 20); // retry x times
 
-final SokeeseClient client = new SokeeseClient( String host , int port, Session session, [ClientOptions options] );
+
+final Login login = new Login("username", "password");
+
+final SokeeseClient client = new SokeeseClient( String host , int port, Login login, [ClientOptions options] );
 
 
 boolean state = client.isOpen();

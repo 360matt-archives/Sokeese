@@ -1,7 +1,8 @@
 # 💥 Sokeese - A Socket API
-Old version, please check v2: https://github.com/360matt/Sokeese-v2
+Old version, please check v2: https://github.com/360matt/Sokeese-v2  
+The new version offers better performance, contains memory leak fixes, an easier to use API, and now available on Maven
 
-This rich and varied library will greatly facilitate development, it is very light, contains no dependencies, and offers performance almost equal to vanilla sockets
+
 
 ## 💙 Features:
 * Authentification system (customizable)
